@@ -16,16 +16,22 @@
 
   const STORAGE_KEY = 'finora_security_pin';
 
-  onMount(() => {
-    if (browser) {
-      storedPin = localStorage.getItem(STORAGE_KEY);
-      if (!storedPin) {
-        // Belum ada PIN -> Pandu pengguna membuat 4 digit PIN baru
-        isSettingNewPin = true;
-        step = 1;
-      }
+  // Reactive: Setiap kali dialog kunci terbuka, selalu muat ulang PIN dari localStorage
+  $: if (browser && isLocked) {
+    storedPin = localStorage.getItem(STORAGE_KEY);
+    if (!storedPin) {
+      // Hanya masuk mode buat PIN jika belum pernah ada PIN tersimpan sama sekali
+      isSettingNewPin = true;
+      step = 1;
+    } else {
+      // Jika sudah pernah buat PIN, selalu masuk ke mode buka kunci (Unlock)
+      isSettingNewPin = false;
+      step = 1;
     }
-  });
+    pinInput = '';
+    confirmPin = '';
+    errorMessage = '';
+  }
 
   const keys = [
     { num: '1', sub: '' },
