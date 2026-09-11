@@ -615,4 +615,38 @@
     gap: 12px;
     margin-top: 10px;
   }
+
+  @media (max-width: 640px) {
+    .modal-backdrop {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    .modal-card {
+      max-width: 100%;
+      border-radius: 28px 28px 0 0;
+      padding: 20px 20px max(24px, env(safe-area-inset-bottom));
+      box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.6);
+      animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-actions {
+      flex-direction: column-reverse;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .modal-actions button {
+      width: 100%;
+      height: 48px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: var(--radius-md);
+    }
+  }
+
+  @keyframes sheetSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
 </style>

@@ -731,23 +731,49 @@
   }
 
   @media (max-width: 640px) {
+    .filter-period-pills {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 6px;
+      scrollbar-width: none;
+    }
+    .filter-period-pills::-webkit-scrollbar {
+      display: none;
+    }
+    .filter-pill {
+      flex-shrink: 0;
+      min-height: 42px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      touch-action: manipulation;
+    }
     .filter-controls-row {
       flex-direction: column;
       align-items: stretch;
+      gap: 12px;
     }
     .control-group {
       flex-direction: column;
       align-items: stretch;
+      gap: 6px;
+    }
+    .filter-input-select,
+    .filter-date-input {
+      min-height: 44px;
+      font-size: 0.9rem;
     }
     .reset-filter-btn {
       margin-left: 0;
       width: 100%;
+      height: 44px;
       justify-content: center;
+      font-size: 0.88rem;
     }
     .filter-summary-strip {
       flex-direction: column;
       align-items: flex-start;
-      gap: 6px;
+      gap: 8px;
     }
     .strip-right {
       width: 100%;

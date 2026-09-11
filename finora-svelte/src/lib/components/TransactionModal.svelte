@@ -135,6 +135,9 @@
   <div class="modal-backdrop" on:click={onClose} role="dialog" aria-modal="true">
     <!-- Modal Dialog -->
     <div class="glass-panel modal-card" on:click|stopPropagation role="document">
+      <!-- Mobile Bottom Sheet Handle -->
+      <div class="sheet-drag-handle"></div>
+
       <div class="modal-header">
         <div class="header-left">
           <div class="modal-icon {type}">
@@ -553,22 +556,82 @@
     color: white;
   }
 
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 12px;
+  .sheet-drag-handle {
+    display: none;
   }
 
-  .submit-btn {
-    flex: 1;
-    font-size: 0.95rem;
-    padding: 12px;
-  }
+  @media (max-width: 768px) {
+    .modal-backdrop {
+      align-items: flex-end;
+      padding: 0;
+      background: rgba(4, 7, 13, 0.85);
+    }
 
-  @media (max-width: 600px) {
+    .sheet-drag-handle {
+      display: block;
+      width: 44px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 99px;
+      margin: 0 auto 16px;
+      flex-shrink: 0;
+    }
+
+    .modal-card {
+      max-width: 100%;
+      border-radius: 28px 28px 0 0;
+      padding: 18px 20px max(24px, env(safe-area-inset-bottom));
+      max-height: 88vh;
+      box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.6);
+      animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUpSheet {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .category-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .cat-chip {
+      min-height: 48px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      border-radius: var(--radius-md);
+    }
+
     .row-3 {
       grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .modal-actions {
+      position: sticky;
+      bottom: 0;
+      background: #0f172a;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-glass);
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal-actions button {
+      height: 50px;
+      font-size: 0.95rem;
+      border-radius: var(--radius-md);
+      font-weight: 700;
+    }
+
+    .modal-actions .btn-outline {
+      flex: 1;
+    }
+
+    .submit-btn {
+      flex: 2;
     }
   }
 </style>

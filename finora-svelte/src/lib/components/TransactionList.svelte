@@ -732,9 +732,13 @@
     }
     .edit-btn,
     .delete-btn {
-      opacity: 0.85;
-      width: 30px;
-      height: 30px;
+      opacity: 0.9;
+      width: 36px;
+      height: 36px;
+      font-size: 0.95rem;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.05);
+      touch-action: manipulation;
     }
   }
 </style>
