@@ -399,3 +399,24 @@ body.light-mode {
   color: #e11d48;
   border-color: rgba(225, 29, 72, 0.25);
 }
+
+/* Sembunyikan Netlify Drawer / Feedback Widget agar tidak menutupi navigasi mobile */
+#netlify-drawer,
+.netlify-drawer,
+[data-netlify-drawer],
+div[class*="netlify-drawer"],
+iframe[title*="Netlify" i],
+iframe[src*="netlify" i],
+div[data-netlify-deploy-id],
+.netlify-badge {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+}
+
