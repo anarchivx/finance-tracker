@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finora - Long-Term Personal Finance & Auto Breakdown</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PWA & Mobile Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2489/2489756.png">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="dark-theme">
+    <!-- App Container -->
+    <div class="app-container">
+
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="brand-icon glow-effect">
+                    <i class="fa-solid fa-gem"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Fin<span>ora</span></h1>
+                    <p><i class="fa-solid fa-shield-halved text-emerald"></i> Long-Term Personal Finance & Auto
+                        Breakdown</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="date-badge" id="currentDateBadge">
+                    <i class="fa-regular fa-calendar-check text-primary"></i>
+                    <span id="liveDateText">Kamis, 10 Sep 2026</span>
+                </div>
+                <button class="icon-btn" id="btnLockApp" title="Lock Application Now">
+                    <i class="fa-solid fa-lock text-rose"></i>
+                </button>
+                <button class="icon-btn" id="btnOpenChangePin" title="Security Passcode Settings">
+                    <i class="fa-solid fa-key text-amber"></i>
+                </button>
+                <button class="icon-btn" id="themeToggleBtn" title="Ganti Tema (Gelap/Terang)">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button class="btn btn-outline" id="btnExportData" title="Ekspor Data ke CSV Excel">
+                    <i class="fa-solid fa-file-excel text-emerald"></i> Ekspor CSV
+                </button>
+                <button class="btn btn-secondary" id="btnLoadSample" title="Isi Data Sampel">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber"></i> Data Sampel
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="dashboard-content">
+
+            <!-- STATS OVERVIEW CARDS -->
+            <section class="stats-overview">
+                <!-- Card Total Saldo -->
+                <div class="stat-card balance-card">
+                    <div class="stat-header">
+                        <span class="stat-label"><i class="fa-solid fa-vault"></i> Saldo Bersih & Aset</span>
+                        <div class="stat-icon bg-primary-soft">
+                            <i class="fa-solid fa-building-columns"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="valNetBalance">Rp 0</div>
+                    <div class="stat-footer">
+                        <span class="badge badge-success" id="badgeNetRatio"><i class="fa-solid fa-arrow-trend-up"></i>
+                            +0% rasio tabungan</span>
+                    </div>
+                </div>
+
+                <!-- Card Total Pemasukan -->
+                <div class="stat-card income-card">
+                    <div class="stat-header">
+                        <span class="stat-label"><i class="fa-solid fa-circle-arrow-down"></i> Total Pemasukan</span>
+                        <div class="stat-icon bg-success-soft">
+                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value text-success" id="valTotalIncome">Rp 0</div>
+                    <div class="stat-footer">
+                        <span class="sub-text" id="countIncomeTx"><i class="fa-solid fa-receipt"></i> 0 transaksi</span>
+                    </div>
+                </div>
+
+                <!-- Card Total Pengeluaran -->
+                <div class="stat-card expense-card">
+                    <div class="stat-header">
+                        <span class="stat-label"><i class="fa-solid fa-circle-arrow-up"></i> Total Pengeluaran</span>
+                        <div class="stat-icon bg-danger-soft">
+                            <i class="fa-solid fa-credit-card"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value text-danger" id="valTotalExpense">Rp 0</div>
+                    <div class="stat-footer">
+                        <span class="sub-text" id="countExpenseTx"><i class="fa-solid fa-receipt"></i> 0
+                            transaksi</span>
+                    </div>
+                </div>
+
+                <!-- Card Target & Anggaran Harian -->
+                <div class="stat-card budget-card">
+                    <div class="stat-header">
+                        <span class="stat-label"><i class="fa-solid fa-bullseye"></i> Limit Pengeluaran Harian</span>
+                        <button class="btn-text" id="btnSetBudget" title="Atur Batas Harian">
+                            <i class="fa-solid fa-sliders"></i> Atur
+                        </button>
+                    </div>
+                    <div class="budget-info">
+                        <div class="stat-value" id="valDailyBudget">Rp 150.000</div>
+                        <span class="sub-text" id="valTodayExpense"><i class="fa-regular fa-clock"></i> Hari ini: Rp
+                            0</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="dailyBudgetProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="stat-footer justify-between">
+                        <span class="sub-text" id="budgetStatusText">Aman (0% terpakai)</span>
+                        <span class="sub-text font-bold" id="budgetRemainingText">Sisa Rp 150.000</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- INPUT & SIMULATION ROW -->
+            <section class="interaction-row">
+
+                <!-- Quick Text & Payment Parser Card -->
+                <div class="glass-card input-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-bolt-lightning text-warning"></i> Smart Natural Payment Parser</h2>
+                        <span class="badge badge-primary"><i class="fa-solid fa-brain"></i> Finora AI</span>
+                    </div>
+                    <p class="card-subtitle">Ketik transaksi Anda dengan bahasa sehari-hari. Finora akan mengurai harga,
+                        kategori, dan metode secara otomatis!</p>
+
+                    <form id="smartParserForm" class="smart-input-box">
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-terminal input-icon text-primary"></i>
+                            <input type="text" id="smartInputText"
+                                placeholder="Contoh: Beli makan siang 35rb via QRIS..." autocomplete="off">
+                            <button type="submit" class="btn btn-primary" id="btnSubmitSmart">
+                                <i class="fa-solid fa-paper-plane"></i> Tambah Seketika
+                            </button>
+                        </div>
+                    </form>
+                    <div class="smart-hints">
+                        <span class="hint-title"><i class="fa-solid fa-lightbulb text-amber"></i> Contoh Cepat:</span>
+                        <button class="chip-btn" data-hint="Beli kopi 22rb QRIS"><i
+                                class="fa-solid fa-mug-hot text-amber"></i> "Beli kopi 22rb QRIS"</button>
+                        <button class="chip-btn" data-hint="Isi bensin 50rb Cash"><i
+                                class="fa-solid fa-gas-pump text-blue"></i> "Isi bensin 50rb Cash"</button>
+                        <button class="chip-btn" data-hint="Gaji bulanan 5000000 Transfer"><i
+                                class="fa-solid fa-money-bill-wave text-emerald"></i> "Gaji bulanan 5jt
+                            Transfer"</button>
+                        <button class="chip-btn" data-hint="Bayar listrik 175rb Mandiri"><i
+                                class="fa-solid fa-bolt text-danger"></i> "Bayar listrik 175rb Mandiri"</button>
+                    </div>
+
+                    <!-- Simulator Tombol Pembayaran Cepat -->
+                    <div class="quick-simulator">
+                        <span class="sim-title"><i class="fa-solid fa-gamepad text-primary"></i> Simulator Pembayaran
+                            Instan (1-Klik Auto-Record):</span>
+                        <div class="sim-buttons">
+                            <button class="sim-btn" data-title="Kopi Espresso" data-amount="20000"
+                                data-cat="Makanan & Minuman" data-method="QRIS" data-type="expense">
+                                <i class="fa-solid fa-mug-hot text-amber"></i>
+                                <span>+ Bayar Kopi (Rp 20rb)</span>
+                            </button>
+                            <button class="sim-btn" data-title="Bensin Shell/Pertamax" data-amount="50000"
+                                data-cat="Transportasi & Bensin" data-method="QRIS" data-type="expense">
+                                <i class="fa-solid fa-gas-pump text-blue"></i>
+                                <span>+ Bayar Bensin (Rp 50rb)</span>
+                            </button>
+                            <button class="sim-btn" data-title="Makan Nasi Padang" data-amount="35000"
+                                data-cat="Makanan & Minuman" data-method="Tunai" data-type="expense">
+                                <i class="fa-solid fa-utensils text-orange"></i>
+                                <span>+ Makan Siang (Rp 35rb)</span>
+                            </button>
+                            <button class="sim-btn" data-title="Gaji / Hasil Proyek" data-amount="1500000"
+                                data-cat="Gaji & Uang Masuk" data-method="Bank Transfer" data-type="income">
+                                <i class="fa-solid fa-money-bill-wave text-emerald"></i>
+                                <span>+ Terima Transfer (Rp 1.5jt)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Manual Full Toggle Card -->
+                <div class="glass-card form-manual-card">
+                    <div class="card-header">
+                        <h2 id="formTitle"><i class="fa-solid fa-pen-to-square text-primary"></i> Form Transaksi Detail
+                        </h2>
+                        <div class="type-toggle">
+                            <button class="toggle-btn active-expense" id="btnToggleExpense" type="button"><i
+                                    class="fa-solid fa-minus"></i> Pengeluaran</button>
+                            <button class="toggle-btn" id="btnToggleIncome" type="button"><i
+                                    class="fa-solid fa-plus"></i> Pemasukan</button>
+                        </div>
+                    </div>
+
+                    <form id="manualTxForm">
+                        <input type="hidden" id="txType" value="expense">
+
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="txAmount"><i class="fa-solid fa-coins text-amber"></i> Jumlah (Rp) <span
+                                        class="text-danger">*</span></label>
+                                <div class="input-prefix-wrapper">
+                                    <span class="prefix">Rp</span>
+                                    <input type="number" id="txAmount" placeholder="0" required min="1" step="1000">
+                                </div>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="txCategory"><i class="fa-solid fa-tags text-secondary"></i> Kategori <span
+                                        class="text-danger">*</span></label>
+                                <select id="txCategory" required>
+                                    <!-- Will be populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="txTitle"><i class="fa-solid fa-pen text-primary"></i> Keterangan / Item
+                                    <span class="text-danger">*</span></label>
+                                <input type="text" id="txTitle" placeholder="Misal: Makan malam, Token listrik"
+                                    required>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="txMethod"><i class="fa-solid fa-wallet text-emerald"></i> Metode
+                                    Pembayaran</label>
+                                <select id="txMethod">
+                                    <option value="QRIS">QRIS</option>
+                                    <option value="Tunai">Tunai / Cash</option>
+                                    <option value="Bank Transfer">Bank Transfer (BCA/Mandiri/BRI)</option>
+                                    <option value="GoPay">GoPay</option>
+                                    <option value="OVO">OVO</option>
+                                    <option value="ShopeePay">ShopeePay</option>
+                                    <option value="Kartu Kredit">Kartu Kredit</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="txDate"><i class="fa-regular fa-clock text-info"></i> Tanggal &
+                                    Waktu</label>
+                                <input type="datetime-local" id="txDate" required>
+                            </div>
+                            <div class="form-group flex-1 form-actions-align">
+                                <button type="submit" class="btn btn-success btn-block" id="btnSaveTx">
+                                    <i class="fa-solid fa-floppy-disk"></i> Simpan ke Finora
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ANALYTICS CHARTS SECTION -->
+            <section class="analytics-row">
+                <div class="glass-card chart-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-chart-pie text-secondary"></i> Distribusi Kategori Pengeluaran</h2>
+                        <span class="sub-text" id="chartCatPeriod">Berdasarkan data Finora</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="categoryChart"></canvas>
+                        <div class="empty-chart-notice" id="emptyCatChartNotice">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <p>Belum ada data pengeluaran untuk ditampilkan dalam grafik.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card chart-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-chart-column text-primary"></i> Tren Keuangan (Pemasukan vs
+                            Pengeluaran)</h2>
+                        <span class="sub-text">7 Hari Terakhir</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="trendChart"></canvas>
+                        <div class="empty-chart-notice" id="emptyTrendChartNotice">
+                            <i class="fa-solid fa-diagram-project"></i>
+                            <p>Belum ada tren harian. Tambahkan transaksi untuk melihat grafik.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AUTO BREAKDOWN TABLE & HISTORY SECTION -->
+            <section class="breakdown-section glass-card">
+                <div class="card-header justify-between flex-wrap">
+                    <div class="header-title-group">
+                        <h2><i class="fa-solid fa-list-check text-emerald"></i> Perincian Keuangan Harian Otomatis</h2>
+                        <p class="card-subtitle">Transaksi dikelompokkan per hari secara otomatis dengan kalkulasi
+                            sub-total harian.</p>
+                    </div>
+
+                    <!-- Filter & Search Controls -->
+                    <div class="filter-controls">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="searchKeyword" placeholder="Cari di Finora...">
+                        </div>
+                        <select id="filterCategory" class="select-sm">
+                            <option value="ALL">Semua Kategori</option>
+                        </select>
+                        <select id="filterType" class="select-sm">
+                            <option value="ALL">Semua Jenis</option>
+                            <option value="expense">Pengeluaran Saja</option>
+                            <option value="income">Pemasukan Saja</option>
+                        </select>
+                        <select id="filterMethod" class="select-sm">
+                            <option value="ALL">Semua Metode</option>
+                            <option value="QRIS">QRIS</option>
+                            <option value="Tunai">Tunai</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="GoPay">GoPay</option>
+                            <option value="OVO">OVO</option>
+                            <option value="ShopeePay">ShopeePay</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm" id="btnResetFilters">
+                            <i class="fa-solid fa-rotate-left"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Daily Breakdown Accordion / Grouped View -->
+                <div class="daily-breakdown-container" id="dailyBreakdownList">
+                    <!-- Dynamic rendering of dates & transactions -->
+                </div>
+
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p><strong>Finora</strong> &copy; 2026 &bull; Long-Term Personal Finance & Automated Daily Breakdown System.
+            </p>
+            <p class="footer-subtext">by Andri Hermawan created with love <i class="fa-solid fa-heart"
+                    style="color: #ef4444;"></i></p>
+        </footer>
+    </div>
+
+    <!-- Budget Settings Modal -->
+    <div class="modal-overlay" id="budgetModal">
+        <div class="modal-card glass-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-sliders text-primary"></i> Pengaturan Batas Anggaran Harian Finora</h3>
+                <button class="close-btn" id="btnCloseBudgetModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Tentukan batas maksimum pengeluaran harian Anda. Finora akan memberikan indikator visual & peringatan
+                    pintar jika pengeluaran mendekati limit ini.</p>
+                <div class="form-group mt-3">
+                    <label for="inputDailyBudgetLimit">Batas Pengeluaran Harian (Rp)</label>
+                    <input type="number" id="inputDailyBudgetLimit" placeholder="150000" min="10000" step="10000">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="btnCancelBudget">Batal</button>
+                <button class="btn btn-primary" id="btnSaveBudgetLimit">Simpan Batas</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change PIN Settings Modal -->
+    <div class="modal-overlay" id="changePinModal">
+        <div class="modal-card glass-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-shield-halved text-amber"></i> Security Passcode Manager</h3>
+                <button class="close-btn" id="btnCloseChangePinModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Update your master passcode to maintain maximum account privacy and data protection.</p>
+                <div class="form-group mt-3">
+                    <label for="inputOldPin"><i class="fa-solid fa-lock text-rose"></i> CURRENT PASSCODE</label>
+                    <input type="password" id="inputOldPin" placeholder="•••• (Enter Current Passcode)" maxlength="20">
+                </div>
+                <div class="form-group mt-3">
+                    <label for="inputNewPin"><i class="fa-solid fa-key text-amber"></i> NEW MASTER PASSCODE</label>
+                    <input type="password" id="inputNewPin" placeholder="•••• (Min. 4 Characters)" maxlength="20">
+                </div>
+                <div class="form-group mt-3">
+                    <label for="inputConfirmNewPin"><i class="fa-solid fa-shield-check text-emerald"></i> CONFIRM NEW
+                        PASSCODE</label>
+                    <input type="password" id="inputConfirmNewPin" placeholder="•••• (Re-enter New Passcode)"
+                        maxlength="20">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="btnCancelChangePin">Cancel</button>
+                <button class="btn btn-primary" id="btnSaveNewPin"><i class="fa-solid fa-shield-check"></i> UPDATE
+                    PASSCODE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Custom Scripts -->
+    <script src="js/storage.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/cloud-sync.js"></script>
+    <script src="js/parser.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Service Worker Registration for PWA Mobile Offline Mode
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Finora ServiceWorker registered:', reg))
+                    .catch(err => console.log('Finora ServiceWorker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+
+</html>

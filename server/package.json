@@ -1,0 +1,16 @@
+{
+  "name": "finora-server",
+  "version": "1.0.0",
+  "description": "Finora Realtime SQLite + Socket.IO Backend",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

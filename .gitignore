@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production / Build
+build/
+dist/
+.svelte-kit/
+package/
+
+# Local Environment Variables
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database & Uploads (keep server data local)
+server/*.db
+server/*.db-journal
+server/*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
