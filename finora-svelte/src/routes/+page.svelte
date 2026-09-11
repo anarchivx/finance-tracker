@@ -13,11 +13,25 @@
   import ConfirmModal from '$lib/components/ConfirmModal.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import { activeTab } from '$lib/stores.js';
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
 
   let isModalOpen = false;
   let modalInitialType = 'expense';
   let editingTx = null;
-  let isAppLocked = false;
+  // Otomatis terkunci saat aplikasi dibuka (Gaya M-Banking)
+  let isAppLocked = true;
+
+  onMount(() => {
+    if (browser) {
+      const isSessionUnlocked = sessionStorage.getItem('finora_session_unlocked') === 'true';
+      if (isSessionUnlocked) {
+        isAppLocked = false;
+      } else {
+        isAppLocked = true;
+      }
+    }
+  });
 
   function openModal(type = 'expense') {
     editingTx = null;
@@ -37,10 +51,12 @@
   }
 
   function lockApp() {
+    if (browser) sessionStorage.removeItem('finora_session_unlocked');
     isAppLocked = true;
   }
 
   function unlockApp() {
+    if (browser) sessionStorage.setItem('finora_session_unlocked', 'true');
     isAppLocked = false;
   }
 </script>

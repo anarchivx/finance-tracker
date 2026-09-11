@@ -19,6 +19,11 @@
   onMount(() => {
     if (browser) {
       storedPin = localStorage.getItem(STORAGE_KEY);
+      if (!storedPin) {
+        // Belum ada PIN -> Pandu pengguna membuat 4 digit PIN baru
+        isSettingNewPin = true;
+        step = 1;
+      }
     }
   });
 
@@ -63,10 +68,10 @@
           isSettingNewPin = false;
           step = 1;
           pinInput = '';
-          alert('PIN Keamanan Finora Pro berhasil disimpan!');
+          confirmPin = '';
           onClose();
         } else {
-          triggerError('Konfirmasi PIN tidak cocok. Silakan coba lagi.');
+          triggerError('Konfirmasi PIN tidak cocok. Silakan ulangi.');
           step = 1;
           pinInput = '';
           confirmPin = '';
@@ -82,10 +87,7 @@
           triggerError('PIN Salah. Akses keamanan ditolak.');
         }
       } else {
-        // No PIN configured yet, unlock and prompt
-        isLocked = false;
-        pinInput = '';
-        onClose();
+        startSetupPin();
       }
     }
   }
@@ -117,8 +119,8 @@
 
   function resetPinConfirm() {
     requestConfirm({
-      title: 'Reset PIN Keamanan',
-      message: 'Atur ulang (reset) PIN keamanan Finora? Anda akan diminta membuat PIN 4-digit baru.',
+      title: 'Lupa / Reset PIN Keamanan',
+      message: 'Apakah Anda ingin mengatur ulang PIN keamanan Finora? PIN lama akan dihapus dan Anda akan diminta membuat 4 angka PIN baru.',
       confirmText: 'Reset PIN',
       confirmStyle: 'warning',
       icon: 'fa-key',
@@ -134,10 +136,12 @@
 {#if isLocked}
   <div class="lock-overlay" role="dialog" aria-modal="true">
     <div class="lock-modal-card" class:shake={isShaking}>
-      <!-- Top Close / Dismiss button -->
-      <button class="dismiss-btn" on:click={onClose} title="Tutup / Kembali">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+      <!-- Top Close button: Hanya jika sedang ubah PIN dan sudah punya PIN tersimpan -->
+      {#if isSettingNewPin && storedPin}
+        <button class="dismiss-btn" on:click={cancelSetup} title="Batal Ganti PIN">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      {/if}
 
       <!-- Glowing 3D Shield Badge -->
       <div class="shield-badge-container">
