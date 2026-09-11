@@ -308,7 +308,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      z-index: 999;
+      z-index: 500;
       background: var(--navbar-bg);
       backdrop-filter: blur(25px);
       -webkit-backdrop-filter: blur(25px);
@@ -386,7 +386,7 @@
   .quick-sheet-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 1050;
+    z-index: 600;
     background: rgba(4, 7, 13, 0.78);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);

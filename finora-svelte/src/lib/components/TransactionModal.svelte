@@ -312,7 +312,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: 2000;
     background: rgba(4, 7, 13, 0.8);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -580,7 +580,7 @@
     .modal-card {
       max-width: 100%;
       border-radius: 28px 28px 0 0;
-      padding: 18px 20px max(24px, env(safe-area-inset-bottom));
+      padding: 18px 20px 0;
       max-height: 88vh;
       box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.6);
       animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1);
@@ -612,11 +612,20 @@
       position: sticky;
       bottom: 0;
       background: #0f172a;
-      padding-top: 10px;
+      margin-left: -20px;
+      margin-right: -20px;
+      padding: 14px 20px max(18px, env(safe-area-inset-bottom));
       border-top: 1px solid var(--border-glass);
-      margin-top: 16px;
+      margin-top: 20px;
       display: flex;
       gap: 12px;
+      z-index: 20;
+      box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.45);
+    }
+
+    :global([data-theme="light"]) .modal-actions {
+      background: #ffffff !important;
+      box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.08) !important;
     }
 
     .modal-actions button {

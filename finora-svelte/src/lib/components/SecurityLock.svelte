@@ -258,7 +258,7 @@
   .lock-overlay {
     position: fixed;
     inset: 0;
-    z-index: 200;
+    z-index: 5000;
     background: radial-gradient(circle at 50% 30%, rgba(30, 27, 75, 0.95) 0%, rgba(6, 9, 18, 0.98) 100%);
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);

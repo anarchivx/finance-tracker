@@ -393,7 +393,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: 2000;
     background: rgba(4, 7, 13, 0.75);
     backdrop-filter: blur(8px);
     display: flex;
