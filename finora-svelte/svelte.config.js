@@ -1,17 +1,15 @@
-import adapterAuto from '@sveltejs/adapter-auto';
-
-let adapter = adapterAuto;
-try {
-	const netlify = await import('@sveltejs/adapter-netlify');
-	if (netlify?.default) adapter = netlify.default;
-} catch {
-	adapter = adapterAuto;
-}
+import adapter from '@sveltejs/adapter-static';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter()
+		adapter: adapter({
+			pages: 'build',
+			assets: 'build',
+			fallback: 'index.html',
+			precompress: false,
+			strict: false
+		})
 	}
 };
 
