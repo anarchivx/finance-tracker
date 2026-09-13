@@ -15,8 +15,7 @@
       </p>
       
       <p class="author-credits">
-        Didedikasikan oleh <span class="author-name">Andri Hermawan</span>
-        <span class="heart-wrap">dibuat dengan sepenuh cinta <i class="fa-solid fa-heart heart-icon"></i></span>
+        Dikembangkan oleh <span class="author-name">Andri Hermawan</span>
       </p>
     </div>
   </div>
@@ -113,36 +112,6 @@
     color: var(--primary);
   }
 
-  .heart-wrap {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .heart-icon {
-    color: #f43f5e;
-    font-size: 0.84rem;
-    animation: heartBeat 2.4s ease-in-out infinite;
-    display: inline-block;
-  }
-
-  @keyframes heartBeat {
-    0%, 100% {
-      transform: scale(1);
-    }
-    14% {
-      transform: scale(1.22);
-    }
-    28% {
-      transform: scale(1);
-    }
-    42% {
-      transform: scale(1.18);
-    }
-    70% {
-      transform: scale(1);
-    }
-  }
 
   @media (max-width: 640px) {
     .app-footer {
