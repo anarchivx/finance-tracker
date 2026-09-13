@@ -7,6 +7,11 @@ export default defineConfig({
 		sveltekit(),
 		SvelteKitPWA({
 			registerType: 'autoUpdate',
+			workbox: {
+				skipWaiting: true,
+				clientsClaim: true,
+				cleanupOutdatedCaches: true
+			},
 			manifest: {
 				name: 'Finora',
 				short_name: 'Finora',
