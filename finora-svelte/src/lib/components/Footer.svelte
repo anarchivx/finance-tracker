@@ -16,7 +16,7 @@
       
       <p class="author-credits">
         Dikembangkan oleh <span class="author-name">Andri Hermawan</span>
-        <span class="heart-wrap">• dibuat dengan sepenuh cinta <i class="fa-solid fa-heart heart-icon"></i></span>
+        <span class="heart-wrap">dibuat dengan sepenuh cinta <i class="fa-solid fa-heart heart-icon"></i></span>
       </p>
     </div>
   </div>
