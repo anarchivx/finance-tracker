@@ -1,25 +1,24 @@
 <script>
-  import Navbar from '$lib/components/Navbar.svelte';
-  import BalanceCard from '$lib/components/BalanceCard.svelte';
-  import AiSmartInput from '$lib/components/AiSmartInput.svelte';
-  import AiAdvisor from '$lib/components/AiAdvisor.svelte';
-  import DailyBreakdown from '$lib/components/DailyBreakdown.svelte';
-  import AnalyticsCharts from '$lib/components/AnalyticsCharts.svelte';
-  import BudgetSection from '$lib/components/BudgetSection.svelte';
-  import GoalsSection from '$lib/components/GoalsSection.svelte';
-  import TransactionList from '$lib/components/TransactionList.svelte';
-  import TransactionModal from '$lib/components/TransactionModal.svelte';
-  import SecurityLock from '$lib/components/SecurityLock.svelte';
-  import ConfirmModal from '$lib/components/ConfirmModal.svelte';
-  import SplashScreen from '$lib/components/SplashScreen.svelte';
-  import CloudSyncModal from '$lib/components/CloudSyncModal.svelte';
-  import Footer from '$lib/components/Footer.svelte';
-  import { activeTab, theme, isPrivacyMode, currency } from '$lib/stores.js';
-  import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
+  import Navbar from "$lib/components/Navbar.svelte";
+  import BalanceCard from "$lib/components/BalanceCard.svelte";
+  import AiSmartInput from "$lib/components/AiSmartInput.svelte";
+  import AiAdvisor from "$lib/components/AiAdvisor.svelte";
+  import DailyBreakdown from "$lib/components/DailyBreakdown.svelte";
+  import AnalyticsCharts from "$lib/components/AnalyticsCharts.svelte";
+  import BudgetSection from "$lib/components/BudgetSection.svelte";
+  import GoalsSection from "$lib/components/GoalsSection.svelte";
+  import TransactionList from "$lib/components/TransactionList.svelte";
+  import TransactionModal from "$lib/components/TransactionModal.svelte";
+  import SecurityLock from "$lib/components/SecurityLock.svelte";
+  import ConfirmModal from "$lib/components/ConfirmModal.svelte";
+  import SplashScreen from "$lib/components/SplashScreen.svelte";
+  import Footer from "$lib/components/Footer.svelte";
+  import { activeTab, theme, isPrivacyMode, currency } from "$lib/stores.js";
+  import { onMount } from "svelte";
+  import { browser } from "$app/environment";
 
   let isModalOpen = false;
-  let modalInitialType = 'expense';
+  let modalInitialType = "expense";
   let editingTx = null;
   // Otomatis terkunci saat aplikasi dibuka (Gaya M-Banking)
   let isAppLocked = true;
@@ -27,11 +26,9 @@
   let isMobileMenuOpen = false;
   // Tampilan loading awal (Splash Screen)
   let showSplash = true;
-  // Modal Pusat Integrasi Real-Time & Cloud Sync
-  let isCloudModalOpen = false;
 
   function toggleTheme() {
-    $theme = $theme === 'dark' ? 'light' : 'dark';
+    $theme = $theme === "dark" ? "light" : "dark";
   }
 
   function togglePrivacy() {
@@ -45,7 +42,8 @@
 
   onMount(() => {
     if (browser) {
-      const isSessionUnlocked = sessionStorage.getItem('finora_session_unlocked') === 'true';
+      const isSessionUnlocked =
+        sessionStorage.getItem("finora_session_unlocked") === "true";
       if (isSessionUnlocked) {
         isAppLocked = false;
       } else {
@@ -54,7 +52,7 @@
     }
   });
 
-  function openModal(type = 'expense') {
+  function openModal(type = "expense") {
     editingTx = null;
     modalInitialType = type;
     isModalOpen = true;
@@ -72,33 +70,32 @@
   }
 
   function lockApp() {
-    if (browser) sessionStorage.removeItem('finora_session_unlocked');
+    if (browser) sessionStorage.removeItem("finora_session_unlocked");
     isAppLocked = true;
   }
 
   function unlockApp() {
-    if (browser) sessionStorage.setItem('finora_session_unlocked', 'true');
+    if (browser) sessionStorage.setItem("finora_session_unlocked", "true");
     isAppLocked = false;
   }
 </script>
 
 <svelte:head>
   <title>Finora AI Pro — Smart Natural Language & Real-time Wealth Hub</title>
-  <meta name="description" content="Aplikasi pencatat keuangan modern dengan Finora AI Smart Parser, analisis finansial cerdas, dan real-time database SQLite." />
+  <meta
+    name="description"
+    content="Aplikasi pencatat keuangan modern dengan Finora AI Smart Parser, analisis finansial cerdas, dan real-time database SQLite."
+  />
 </svelte:head>
 
 <div class="page-wrapper">
   <!-- Top Navigation with AI tag & Lock button -->
-  <Navbar
-    onOpenModal={() => openModal('expense')}
-    onLockApp={lockApp}
-    onOpenCloudSync={() => (isCloudModalOpen = true)}
-  />
+  <Navbar onOpenModal={() => openModal("expense")} onLockApp={lockApp} />
 
   <!-- Main Dashboard Container -->
   <main class="dashboard-body">
     <!-- View Switcher based on $activeTab -->
-    {#if $activeTab === 'dashboard'}
+    {#if $activeTab === "dashboard"}
       <!-- Hero Balance -->
       <BalanceCard onQuickAdd={(type) => openModal(type)} />
 
@@ -122,26 +119,21 @@
 
       <!-- Transaction List with Search & Export -->
       <TransactionList onEditTransaction={handleEditTransaction} />
-
-    {:else if $activeTab === 'ai'}
+    {:else if $activeTab === "ai"}
       <!-- Dedicated Full AI Workspace -->
       <AiSmartInput />
       <AiAdvisor />
-
-    {:else if $activeTab === 'breakdown'}
+    {:else if $activeTab === "breakdown"}
       <!-- Dedicated Daily Breakdown View -->
       <DailyBreakdown onEditTransaction={handleEditTransaction} />
       <TransactionList onEditTransaction={handleEditTransaction} />
-
-    {:else if $activeTab === 'transactions'}
+    {:else if $activeTab === "transactions"}
       <AiSmartInput />
       <TransactionList onEditTransaction={handleEditTransaction} />
-
-    {:else if $activeTab === 'budgets'}
+    {:else if $activeTab === "budgets"}
       <BudgetSection />
       <AnalyticsCharts />
-
-    {:else if $activeTab === 'goals'}
+    {:else if $activeTab === "goals"}
       <GoalsSection />
     {/if}
   </main>
@@ -153,8 +145,8 @@
   <nav class="mobile-dock">
     <button
       class="dock-item"
-      class:active={$activeTab === 'dashboard' && !isMobileMenuOpen}
-      on:click={() => handleSelectTab('dashboard')}
+      class:active={$activeTab === "dashboard" && !isMobileMenuOpen}
+      on:click={() => handleSelectTab("dashboard")}
     >
       <i class="fa-solid fa-chart-pie"></i>
       <span>Beranda</span>
@@ -162,22 +154,26 @@
 
     <button
       class="dock-item"
-      class:active={$activeTab === 'breakdown' && !isMobileMenuOpen}
-      on:click={() => handleSelectTab('breakdown')}
+      class:active={$activeTab === "breakdown" && !isMobileMenuOpen}
+      on:click={() => handleSelectTab("breakdown")}
     >
       <i class="fa-solid fa-calendar-day"></i>
       <span>Perincian</span>
     </button>
 
     <!-- Floating Thumb Center Add Button -->
-    <button class="dock-add-btn" on:click={() => openModal('expense')} title="Catat Baru">
+    <button
+      class="dock-add-btn"
+      on:click={() => openModal("expense")}
+      title="Catat Baru"
+    >
       <i class="fa-solid fa-plus"></i>
     </button>
 
     <button
       class="dock-item"
-      class:active={$activeTab === 'transactions' && !isMobileMenuOpen}
-      on:click={() => handleSelectTab('transactions')}
+      class:active={$activeTab === "transactions" && !isMobileMenuOpen}
+      on:click={() => handleSelectTab("transactions")}
     >
       <i class="fa-solid fa-receipt"></i>
       <span>Riwayat</span>
@@ -189,14 +185,20 @@
       on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}
       title="Menu Lengkap & Pengaturan"
     >
-      <i class="fa-solid {isMobileMenuOpen ? 'fa-xmark' : 'fa-bars-staggered'}"></i>
-      <span>{isMobileMenuOpen ? 'Tutup' : 'Menu'}</span>
+      <i class="fa-solid {isMobileMenuOpen ? 'fa-xmark' : 'fa-bars-staggered'}"
+      ></i>
+      <span>{isMobileMenuOpen ? "Tutup" : "Menu"}</span>
     </button>
   </nav>
 
   <!-- One-Handed Quick-Hub Bottom Sheet -->
   {#if isMobileMenuOpen}
-    <div class="quick-sheet-backdrop" on:click={() => (isMobileMenuOpen = false)} role="dialog" aria-modal="true">
+    <div
+      class="quick-sheet-backdrop"
+      on:click={() => (isMobileMenuOpen = false)}
+      role="dialog"
+      aria-modal="true"
+    >
       <div class="quick-sheet-card" on:click|stopPropagation role="document">
         <div class="sheet-drag-pill"></div>
 
@@ -205,56 +207,98 @@
             <h3>Pusat Kontrol Finora</h3>
             <p>Akses seluruh menu dengan jangkauan satu jempol</p>
           </div>
-          <button class="sheet-close-btn" on:click={() => (isMobileMenuOpen = false)}>
+          <button
+            class="sheet-close-btn"
+            on:click={() => (isMobileMenuOpen = false)}
+          >
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
 
         <div class="sheet-grid">
-          <button class="sheet-tile" class:active={$activeTab === 'ai'} on:click={() => handleSelectTab('ai')}>
-            <div class="tile-icon ai-gradient"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "ai"}
+            on:click={() => handleSelectTab("ai")}
+          >
+            <div class="tile-icon ai-gradient">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
             <span class="tile-label">Finora AI</span>
             <span class="tile-desc">Smart Copilot</span>
           </button>
 
-          <button class="sheet-tile" class:active={$activeTab === 'budgets'} on:click={() => handleSelectTab('budgets')}>
-            <div class="tile-icon budget-gradient"><i class="fa-solid fa-wallet"></i></div>
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "budgets"}
+            on:click={() => handleSelectTab("budgets")}
+          >
+            <div class="tile-icon budget-gradient">
+              <i class="fa-solid fa-wallet"></i>
+            </div>
             <span class="tile-label">Anggaran</span>
             <span class="tile-desc">Batas Bulanan</span>
           </button>
 
-          <button class="sheet-tile" class:active={$activeTab === 'goals'} on:click={() => handleSelectTab('goals')}>
-            <div class="tile-icon goal-gradient"><i class="fa-solid fa-bullseye"></i></div>
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "goals"}
+            on:click={() => handleSelectTab("goals")}
+          >
+            <div class="tile-icon goal-gradient">
+              <i class="fa-solid fa-bullseye"></i>
+            </div>
             <span class="tile-label">Target Impian</span>
             <span class="tile-desc">Tabungan Goals</span>
           </button>
 
           <button class="sheet-tile" on:click={togglePrivacy}>
-            <div class="tile-icon sys-gradient"><i class={$isPrivacyMode ? 'fa-solid fa-eye-slash text-rose' : 'fa-solid fa-eye text-emerald'}></i></div>
+            <div class="tile-icon sys-gradient">
+              <i
+                class={$isPrivacyMode
+                  ? "fa-solid fa-eye-slash text-rose"
+                  : "fa-solid fa-eye text-emerald"}
+              ></i>
+            </div>
             <span class="tile-label">Mode Privasi</span>
-            <span class="tile-desc">{$isPrivacyMode ? 'Sensor Saldo' : 'Tampil Nominal'}</span>
+            <span class="tile-desc"
+              >{$isPrivacyMode ? "Sensor Saldo" : "Tampil Nominal"}</span
+            >
           </button>
 
           <button class="sheet-tile" on:click={toggleTheme}>
-            <div class="tile-icon theme-gradient"><i class={$theme === 'dark' ? 'fa-solid fa-sun text-amber' : 'fa-solid fa-moon text-cyan'}></i></div>
+            <div class="tile-icon theme-gradient">
+              <i
+                class={$theme === "dark"
+                  ? "fa-solid fa-sun text-amber"
+                  : "fa-solid fa-moon text-cyan"}
+              ></i>
+            </div>
             <span class="tile-label">Tema Tampilan</span>
-            <span class="tile-desc">{$theme === 'dark' ? 'Mode Gelap' : 'Mode Terang'}</span>
+            <span class="tile-desc"
+              >{$theme === "dark" ? "Mode Gelap" : "Mode Terang"}</span
+            >
           </button>
 
-          <button class="sheet-tile" on:click={() => { isMobileMenuOpen = false; isCloudModalOpen = true; }}>
-            <div class="tile-icon sys-gradient"><i class="fa-solid fa-cloud-bolt text-indigo"></i></div>
-            <span class="tile-label">Cloud Sync</span>
-            <span class="tile-desc">Integrasi Real-Time</span>
-          </button>
-
-          <button class="sheet-tile" on:click={() => { isMobileMenuOpen = false; lockApp(); }}>
-            <div class="tile-icon lock-gradient"><i class="fa-solid fa-lock text-rose"></i></div>
+          <button
+            class="sheet-tile"
+            on:click={() => {
+              isMobileMenuOpen = false;
+              lockApp();
+            }}
+          >
+            <div class="tile-icon lock-gradient">
+              <i class="fa-solid fa-lock text-rose"></i>
+            </div>
             <span class="tile-label">Kunci PIN</span>
             <span class="tile-desc">Kunci Brankas</span>
           </button>
         </div>
 
-        <button class="sheet-dismiss-btn" on:click={() => (isMobileMenuOpen = false)}>
+        <button
+          class="sheet-dismiss-btn"
+          on:click={() => (isMobileMenuOpen = false)}
+        >
           <i class="fa-solid fa-chevron-down"></i> Sembunyikan Menu
         </button>
       </div>
@@ -270,19 +314,10 @@
   />
 
   <!-- Security Passcode Lock Overlay -->
-  <SecurityLock
-    isLocked={isAppLocked}
-    onClose={unlockApp}
-  />
+  <SecurityLock isLocked={isAppLocked} onClose={unlockApp} />
 
   <!-- Global In-App Confirmation Dialog -->
   <ConfirmModal />
-
-  <!-- Cloud Sync & Real-Time Settings Modal -->
-  <CloudSyncModal
-    isOpen={isCloudModalOpen}
-    onClose={() => (isCloudModalOpen = false)}
-  />
 
   <!-- Tampilan Loading Awal Pas Masuk Aplikasi (Splash Screen) -->
   {#if showSplash}
@@ -341,7 +376,9 @@
       padding: 8px 12px max(10px, env(safe-area-inset-bottom));
       justify-content: space-around;
       align-items: center;
-      transition: background 0.25s ease, border-color 0.25s ease;
+      transition:
+        background 0.25s ease,
+        border-color 0.25s ease;
     }
 
     .dock-item {
@@ -392,7 +429,9 @@
       box-shadow: 0 6px 25px var(--primary-glow);
       cursor: pointer;
       transform: translateY(-16px);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
       touch-action: manipulation;
     }
 
@@ -421,8 +460,12 @@
   }
 
   @keyframes sheetBackdropFade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .quick-sheet-card {
@@ -443,8 +486,12 @@
   }
 
   @keyframes sheetSlideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
   }
 
   .sheet-drag-pill {
@@ -511,7 +558,10 @@
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
     touch-action: manipulation;
   }
 
@@ -536,37 +586,61 @@
   }
 
   .ai-gradient {
-    background: linear-gradient(135deg, rgba(236, 72, 153, 0.25) 0%, rgba(168, 85, 247, 0.25) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(236, 72, 153, 0.25) 0%,
+      rgba(168, 85, 247, 0.25) 100%
+    );
     color: #f472b6;
     border: 1px solid rgba(236, 72, 153, 0.4);
   }
 
   .budget-gradient {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(99, 102, 241, 0.25) 0%,
+      rgba(59, 130, 246, 0.25) 100%
+    );
     color: #818cf8;
     border: 1px solid rgba(99, 102, 241, 0.4);
   }
 
   .goal-gradient {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(20, 184, 166, 0.25) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.25) 0%,
+      rgba(20, 184, 166, 0.25) 100%
+    );
     color: #34d399;
     border: 1px solid rgba(16, 185, 129, 0.4);
   }
 
   .sys-gradient {
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(14, 165, 233, 0.2) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(6, 182, 212, 0.2) 0%,
+      rgba(14, 165, 233, 0.2) 100%
+    );
     color: #38bdf8;
     border: 1px solid rgba(6, 182, 212, 0.35);
   }
 
   .theme-gradient {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(234, 88, 12, 0.2) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(245, 158, 11, 0.2) 0%,
+      rgba(234, 88, 12, 0.2) 100%
+    );
     color: #fbbf24;
     border: 1px solid rgba(245, 158, 11, 0.35);
   }
 
   .lock-gradient {
-    background: linear-gradient(135deg, rgba(244, 63, 94, 0.2) 0%, rgba(225, 29, 72, 0.2) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(244, 63, 94, 0.2) 0%,
+      rgba(225, 29, 72, 0.2) 100%
+    );
     color: #fb7185;
     border: 1px solid rgba(244, 63, 94, 0.35);
   }

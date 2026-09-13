@@ -39,33 +39,6 @@ app.get('/api/sync', (req, res) => {
   }
 });
 
-// Bulk Push/Migrate Local Data to Cloud DB
-app.post('/api/sync/push', (req, res) => {
-  try {
-    const { transactions: incomingTxs, budgets: incomingBudgets, goals: incomingGoals } = req.body;
-    if (Array.isArray(incomingTxs)) {
-      for (const tx of incomingTxs) {
-        addTransaction(tx);
-      }
-    }
-    if (Array.isArray(incomingBudgets)) {
-      for (const b of incomingBudgets) {
-        updateBudget(b.category, b.monthly_limit);
-      }
-    }
-    if (Array.isArray(incomingGoals)) {
-      for (const g of incomingGoals) {
-        addGoal(g);
-      }
-    }
-    const freshData = getDatabaseData();
-    io.emit('sync:initial', freshData);
-    res.json({ success: true, data: freshData });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 app.post('/api/transactions', (req, res) => {
   try {
     const tx = addTransaction(req.body);

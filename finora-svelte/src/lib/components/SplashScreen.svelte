@@ -14,7 +14,7 @@
 
   const statusMessages = [
     'Menginisialisasi Secure Vault & Enkripsi...',
-    'Sinkronisasi Finora AI & Analitik Cerdas...',
+    'Memuat Finora AI & Analitik Keuangan...',
     'Menyiapkan Dasbor Finansial & Saldo...',
     'Aplikasi Siap Digunakan!'
   ];

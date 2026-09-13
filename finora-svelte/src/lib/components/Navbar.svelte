@@ -1,17 +1,26 @@
 <script>
-  import { activeTab, syncStatus, lastSyncTime, currency, isPrivacyMode, theme } from '../stores.js';
-  import FinoraLogo from './FinoraLogo.svelte';
+  import {
+    activeTab,
+    currency,
+    isPrivacyMode,
+    theme,
+  } from "../stores.js";
+  import FinoraLogo from "./FinoraLogo.svelte";
   export let onOpenModal = () => {};
   export let onLockApp = () => {};
-  export let onOpenCloudSync = () => {};
 
   const tabs = [
-    { id: 'dashboard', label: 'Ringkasan', icon: 'fa-solid fa-chart-pie' },
-    { id: 'ai', label: 'Finora AI', icon: 'fa-solid fa-wand-magic-sparkles', isAi: true },
-    { id: 'breakdown', label: 'Perincian', icon: 'fa-solid fa-calendar-day' },
-    { id: 'transactions', label: 'Transaksi', icon: 'fa-solid fa-receipt' },
-    { id: 'budgets', label: 'Anggaran', icon: 'fa-solid fa-wallet' },
-    { id: 'goals', label: 'Target', icon: 'fa-solid fa-bullseye' }
+    { id: "dashboard", label: "Ringkasan", icon: "fa-solid fa-chart-pie" },
+    {
+      id: "ai",
+      label: "Finora AI",
+      icon: "fa-solid fa-wand-magic-sparkles",
+      isAi: true,
+    },
+    { id: "breakdown", label: "Perincian", icon: "fa-solid fa-calendar-day" },
+    { id: "transactions", label: "Transaksi", icon: "fa-solid fa-receipt" },
+    { id: "budgets", label: "Anggaran", icon: "fa-solid fa-wallet" },
+    { id: "goals", label: "Target", icon: "fa-solid fa-bullseye" },
   ];
 
   function togglePrivacy() {
@@ -19,14 +28,19 @@
   }
 
   function toggleTheme() {
-    theme.update((t) => (t === 'dark' ? 'light' : 'dark'));
+    theme.update((t) => (t === "dark" ? "light" : "dark"));
   }
 </script>
 
 <header class="navbar-wrapper">
   <div class="navbar-container">
     <!-- Brand Logo -->
-    <div class="brand-section" on:click={() => ($activeTab = 'dashboard')} style="cursor: pointer;" title="Finora Dashboard">
+    <div
+      class="brand-section"
+      on:click={() => ($activeTab = "dashboard")}
+      style="cursor: pointer;"
+      title="Finora Dashboard"
+    >
       <FinoraLogo size="md" showText={true} glow={true} />
     </div>
 
@@ -50,26 +64,12 @@
 
     <!-- Right Controls -->
     <div class="nav-actions">
-      <!-- Real-Time Cloud Sync Button -->
-      <button
-        class="cloud-sync-btn {$syncStatus}"
-        on:click={onOpenCloudSync}
-        title="Pengaturan Real-Time & Cloud Sync (Status: {$syncStatus})"
-      >
-        <span class="sync-dot"></span>
-        <span class="sync-label">
-          {#if $syncStatus === 'connected'}
-            Real-time
-          {:else if $syncStatus === 'connecting'}
-            Menghubungkan
-          {:else}
-            Cloud Sync
-          {/if}
-        </span>
-      </button>
-
       <!-- Currency Switcher -->
-      <select bind:value={$currency} class="currency-select" title="Pilih Mata Uang">
+      <select
+        bind:value={$currency}
+        class="currency-select"
+        title="Pilih Mata Uang"
+      >
         <option value="IDR">🇮🇩 IDR (Rp)</option>
         <option value="USD">🇺🇸 USD ($)</option>
         <option value="EUR">🇪🇺 EUR (€)</option>
@@ -79,18 +79,21 @@
       <button
         class="btn-icon btn-outline privacy-btn"
         on:click={togglePrivacy}
-        title={$isPrivacyMode ? 'Tampilkan Nominal' : 'Sembunyikan Nominal'}
+        title={$isPrivacyMode ? "Tampilkan Nominal" : "Sembunyikan Nominal"}
       >
-        <i class={$isPrivacyMode ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'}></i>
+        <i class={$isPrivacyMode ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"}
+        ></i>
       </button>
 
       <!-- Theme Switcher (Dark / Light Mode) -->
       <button
         class="btn-icon btn-outline theme-btn"
         on:click={toggleTheme}
-        title={$theme === 'dark' ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
+        title={$theme === "dark"
+          ? "Beralih ke Mode Terang (Light Mode)"
+          : "Beralih ke Mode Gelap (Dark Mode)"}
       >
-        {#if $theme === 'dark'}
+        {#if $theme === "dark"}
           <i class="fa-solid fa-moon text-amber"></i>
         {:else}
           <i class="fa-solid fa-sun text-amber"></i>
@@ -125,7 +128,9 @@
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border-glass);
     padding: 12px 24px;
-    transition: background 0.25s ease, border-color 0.25s ease;
+    transition:
+      background 0.25s ease,
+      border-color 0.25s ease;
   }
 
   .navbar-container {
@@ -243,7 +248,11 @@
   }
 
   .ai-tab.active {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(236, 72, 153, 0.3));
+    background: linear-gradient(
+      135deg,
+      rgba(99, 102, 241, 0.3),
+      rgba(236, 72, 153, 0.3)
+    );
     color: #ffffff;
     border: 1px solid rgba(236, 72, 153, 0.4);
   }
@@ -303,61 +312,6 @@
     border-color: rgba(244, 63, 94, 0.3);
   }
 
-  .cloud-sync-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 12px;
-    border-radius: 99px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-glass);
-    color: var(--text-muted);
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .cloud-sync-btn:hover {
-    border-color: var(--primary);
-    background: rgba(99, 102, 241, 0.1);
-    color: var(--text-main);
-  }
-
-  .cloud-sync-btn .sync-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #64748b;
-  }
-
-  .cloud-sync-btn.connected {
-    border-color: rgba(16, 185, 129, 0.35);
-    background: rgba(16, 185, 129, 0.1);
-    color: #34d399;
-  }
-
-  .cloud-sync-btn.connected .sync-dot {
-    background: #10b981;
-    box-shadow: 0 0 8px #10b981;
-  }
-
-  .cloud-sync-btn.connecting {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.1);
-    color: #fbbf24;
-  }
-
-  .cloud-sync-btn.connecting .sync-dot {
-    background: #f59e0b;
-    animation: dotBlink 1s infinite;
-  }
-
-  @keyframes dotBlink {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
-
   .cta-btn {
     font-size: 0.85rem;
     padding: 8px 16px;
@@ -390,12 +344,6 @@
     }
     .nav-actions {
       gap: 6px;
-    }
-    .sync-text {
-      display: none;
-    }
-    .sync-pill {
-      padding: 6px 8px;
     }
     .currency-select {
       padding: 5px 6px;

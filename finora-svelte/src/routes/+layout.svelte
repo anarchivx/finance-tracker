@@ -2,7 +2,6 @@
   import '../app.css';
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { initSocket } from '$lib/socket.js';
   import { theme } from '$lib/stores.js';
 
   let deferredPrompt = null;
@@ -21,9 +20,6 @@
   }
 
   onMount(() => {
-    // Initialize real-time connection
-    initSocket();
-
     // Capture PWA installation prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -48,7 +44,7 @@
   {#if showInstallBanner}
     <div class="pwa-banner">
       <div class="banner-content">
-        <i class="fa-solid fa-cloud-arrow-down"></i>
+        <i class="fa-solid fa-mobile-screen-button"></i>
         <span>Pasang <strong>Finora Pro</strong> di perangkat Anda untuk akses cepat & offline!</span>
       </div>
       <div class="banner-actions">

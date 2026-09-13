@@ -101,7 +101,7 @@ export const addTransaction = (tx) => {
   const time = tx.time || now.toTimeString().slice(0, 5);
   const date = tx.date || now.toISOString().split('T')[0];
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO transactions (id, description, amount, category, type, payment_method, date, time, notes)
+    INSERT INTO transactions (id, description, amount, category, type, payment_method, date, time, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   stmt.run(
@@ -182,7 +182,7 @@ export const updateGoalDeposit = (id, addAmount) => {
 export const addGoal = (g) => {
   const id = g.id || `g-${Date.now()}`;
   db.prepare(`
-    INSERT OR REPLACE INTO goals (id, name, target_amount, current_amount, deadline, icon)
+    INSERT INTO goals (id, name, target_amount, current_amount, deadline, icon)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(
     id,
