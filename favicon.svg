@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="finoraGrad1" x1="10%" y1="10%" x2="90%" y2="90%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="35%" stop-color="#6366f1"/>
+      <stop offset="70%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#d946ef"/>
+    </linearGradient>
+    <linearGradient id="finoraGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <filter id="finoraGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Shield/Squircle -->
+  <rect width="100" height="100" rx="26" fill="url(#bgGrad)" stroke="rgba(99, 102, 241, 0.35)" stroke-width="2"/>
+
+  <!-- Glowing Ambient Aura -->
+  <circle cx="50" cy="50" r="32" fill="#6366f1" opacity="0.22" filter="url(#finoraGlow)"/>
+
+  <!-- Modern Geometric 'F' + Growth Vector Monogram -->
+  <g filter="url(#finoraGlow)">
+    <path d="M28 22 C28 19.79 29.79 18 32 18 H38 C40.21 18 42 19.79 42 22 V78 C42 80.21 40.21 82 38 82 H32 C29.79 82 28 80.21 28 78 Z" fill="url(#finoraGrad1)"/>
+    <path d="M42 21 C42 19.34 43.34 18 45 18 H66.5 C68.2 18 69.7 19.1 70.2 20.7 L77.8 40.5 C78.5 42.4 77.1 44.5 75.1 44.5 H56 C53.79 44.5 52 42.71 52 40.5 V33 C52 30.79 50.21 29 48 29 H42 V21 Z" fill="url(#finoraGrad1)"/>
+    <path d="M42 47 C42 45.34 43.34 44 45 44 H62 C64.21 44 66 45.79 66 48 V53 C66 55.21 64.21 57 62 57 H45 C43.34 57 42 55.66 42 54 V47 Z" fill="url(#finoraGrad2)"/>
+    <polygon points="76,17 81,25 76,33 71,25" fill="#38bdf8"/>
+    <circle cx="76" cy="25" r="2.5" fill="#ffffff"/>
+  </g>
+</svg>

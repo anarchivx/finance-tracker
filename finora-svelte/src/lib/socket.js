@@ -194,14 +194,29 @@ export function emitResetTransactions() {
 
 export function emitUpdateBudget(category, limit) {
   return new Promise((resolve) => {
-    if (socket && socket.connected) {
-      socket.emit('budget:set', { category, limit }, (res) => resolve(res));
-    } else {
-      budgets.update((list) => {
-        const item = list.find((b) => b.category === category);
-        if (item) item.monthly_limit = limit;
+    const trimmedCat = category.trim();
+    const numLimit = Number(limit) || 0;
+
+    // 1. Optimistic immediate local store update (Ensures 100% offline & Netlify reliability)
+    budgets.update((list) => {
+      const idx = list.findIndex((b) => b.category.toLowerCase().trim() === trimmedCat.toLowerCase());
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], monthly_limit: numLimit };
         return [...list];
-      });
+      } else {
+        const newBudget = {
+          id: 'b_' + Date.now(),
+          category: trimmedCat,
+          monthly_limit: numLimit
+        };
+        return [...list, newBudget];
+      }
+    });
+
+    // 2. Real-time Socket broadcast
+    if (socket && socket.connected) {
+      socket.emit('budget:set', { category: trimmedCat, limit: numLimit }, (res) => resolve(res));
+    } else {
       resolve({ success: true, local: true });
     }
   });
@@ -209,22 +224,23 @@ export function emitUpdateBudget(category, limit) {
 
 export function emitDeleteBudget(category) {
   return new Promise((resolve) => {
-    // 1. Optimistic immediate local removal
-    budgets.update((list) => list.filter((b) => b.category !== category));
+    const trimmedCat = category.trim();
 
-    // 2. Socket broadcast
+    // 1. Optimistic immediate local removal
+    budgets.update((list) => list.filter((b) => b.category.toLowerCase().trim() !== trimmedCat.toLowerCase()));
+
+    // 2. Real-time Socket broadcast
     if (socket && socket.connected) {
-      socket.emit('budget:remove', category, (res) => resolve(res));
+      socket.emit('budget:remove', trimmedCat, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
     }
 
-    // 3. REST API delete
-    fetch(`${SERVER_URL}/api/budgets/${encodeURIComponent(category)}`, { method: 'DELETE' })
+    // 3. REST API delete fallback (if server is running)
+    fetch(`${SERVER_URL}/api/budgets/${encodeURIComponent(trimmedCat)}`, { method: 'DELETE' })
       .then((res) => res.json())
       .then((data) => resolve({ success: true, data }))
-      .catch((err) => {
-        console.warn('REST delete budget error:', err);
-        resolve({ success: true, local: true });
-      });
+      .catch(() => resolve({ success: true, local: true }));
   });
 }
 

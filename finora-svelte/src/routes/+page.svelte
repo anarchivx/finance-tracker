@@ -11,6 +11,7 @@
   import TransactionModal from '$lib/components/TransactionModal.svelte';
   import SecurityLock from '$lib/components/SecurityLock.svelte';
   import ConfirmModal from '$lib/components/ConfirmModal.svelte';
+  import SplashScreen from '$lib/components/SplashScreen.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import { activeTab, theme, isPrivacyMode, currency } from '$lib/stores.js';
   import { onMount } from 'svelte';
@@ -23,6 +24,8 @@
   let isAppLocked = true;
   // One-handed Mobile Quick Hub Sheet
   let isMobileMenuOpen = false;
+  // Tampilan loading awal (Splash Screen)
+  let showSplash = true;
 
   function toggleTheme() {
     $theme = $theme === 'dark' ? 'light' : 'dark';
@@ -264,6 +267,11 @@
 
   <!-- Global In-App Confirmation Dialog -->
   <ConfirmModal />
+
+  <!-- Tampilan Loading Awal Pas Masuk Aplikasi (Splash Screen) -->
+  {#if showSplash}
+    <SplashScreen onFinish={() => (showSplash = false)} />
+  {/if}
 </div>
 
 <style>

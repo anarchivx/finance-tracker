@@ -19,21 +19,57 @@
     <meta name="theme-color" content="#6366f1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2489/2489756.png">
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="apple-touch-icon" href="./favicon.svg">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body class="dark-theme">
+    <!-- Initial Loading Splash Screen -->
+    <div id="finoraSplashScreen" class="splash-screen-root" onclick="dismissSplash()" role="dialog" tabindex="0" aria-label="Memuat Finora">
+        <div class="ambient-glow glow-indigo"></div>
+        <div class="ambient-glow glow-cyan"></div>
+        <div class="splash-card">
+            <div class="logo-spotlight">
+                <div class="spotlight-ring ring-1"></div>
+                <div class="spotlight-ring ring-2"></div>
+                <img src="./favicon.svg" alt="Finora Logo" class="splash-logo-img" />
+            </div>
+            <div class="brand-hero">
+                <h1 class="brand-title">
+                    <span class="fin-text">FIN</span><span class="ora-text">ORA</span>
+                    <span class="badge-pro">PRO</span>
+                </h1>
+                <p class="brand-tagline">Intelligent Wealth Hub • AI Financial Copilot</p>
+            </div>
+            <div class="loader-box">
+                <div class="progress-track">
+                    <div class="progress-fill" id="splashProgressFill" style="width: 0%;">
+                        <div class="progress-glow-head"></div>
+                    </div>
+                </div>
+                <div class="loader-meta">
+                    <span class="status-msg" id="splashStatusMsg">
+                        <i class="fa-solid fa-circle-notch fa-spin text-primary"></i>
+                        Menginisialisasi Secure Vault...
+                    </span>
+                    <span class="progress-val" id="splashProgressVal">0%</span>
+                </div>
+            </div>
+            <div class="skip-hint">Sentuh di mana saja untuk lewati</div>
+        </div>
+    </div>
+
     <!-- App Container -->
     <div class="app-container">
 
         <!-- Header -->
         <header class="app-header">
             <div class="header-brand">
-                <div class="brand-icon glow-effect">
-                    <i class="fa-solid fa-gem"></i>
+                <div class="brand-icon glow-effect" style="background: transparent; box-shadow: none;">
+                    <img src="./favicon.svg" alt="Finora Logo" style="width: 52px; height: 52px; border-radius: 14px; box-shadow: 0 0 20px rgba(99, 102, 241, 0.45);" />
                 </div>
                 <div class="brand-text">
                     <h1>Fin<span>ora</span></h1>
@@ -425,6 +461,45 @@
     <script src="js/charts.js"></script>
     <script src="js/app.js"></script>
     <script>
+        // Finora Splash Screen Loader Controller
+        (function() {
+            const splash = document.getElementById('finoraSplashScreen');
+            const fill = document.getElementById('splashProgressFill');
+            const val = document.getElementById('splashProgressVal');
+            const msg = document.getElementById('splashStatusMsg');
+            if (!splash) return;
+
+            const steps = [
+                { p: 35, text: 'Sinkronisasi Finora AI & Analitik Cerdas...', t: 300 },
+                { p: 75, text: 'Menyiapkan Dasbor Finansial & Saldo...', t: 700 },
+                { p: 100, text: 'Aplikasi Siap Digunakan!', t: 1050 }
+            ];
+
+            steps.forEach(s => {
+                setTimeout(() => {
+                    if (fill) fill.style.width = s.p + '%';
+                    if (val) val.innerText = s.p + '%';
+                    if (msg) msg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-primary"></i> ' + s.text;
+                }, s.t);
+            });
+
+            window.dismissSplash = function() {
+                if (!splash || splash.classList.contains('closing')) return;
+                splash.classList.add('closing');
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                }, 450);
+            };
+
+            setTimeout(window.dismissSplash, 1400);
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+                    window.dismissSplash();
+                }
+            });
+        })();
+
         // Service Worker Registration for PWA Mobile Offline Mode
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

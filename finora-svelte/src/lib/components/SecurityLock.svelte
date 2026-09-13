@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { requestConfirm } from '$lib/stores.js';
+  import FinoraLogo from './FinoraLogo.svelte';
 
   export let isLocked = false;
   export let onClose = () => {};
@@ -149,12 +150,10 @@
         </button>
       {/if}
 
-      <!-- Glowing 3D Shield Badge -->
+      <!-- Glowing Finora Security Badge -->
       <div class="shield-badge-container">
         <div class="shield-pulse-ring"></div>
-        <div class="shield-icon-box">
-          <i class="fa-solid fa-shield-halved"></i>
-        </div>
+        <FinoraLogo size="lg" animated={true} glow={true} />
       </div>
 
       <!-- Title & Subtitle Hierarchy -->

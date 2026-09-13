@@ -1,5 +1,6 @@
 <script>
   import { activeTab, syncStatus, lastSyncTime, currency, isPrivacyMode, theme } from '../stores.js';
+  import FinoraLogo from './FinoraLogo.svelte';
   export let onOpenModal = () => {};
   export let onLockApp = () => {};
 
@@ -24,14 +25,8 @@
 <header class="navbar-wrapper">
   <div class="navbar-container">
     <!-- Brand Logo -->
-    <div class="brand-section" on:click={() => ($activeTab = 'dashboard')} style="cursor: pointer;">
-      <div class="brand-logo">
-        <i class="fa-solid fa-bolt"></i>
-      </div>
-      <div class="brand-info">
-        <span class="brand-title">FINORA</span>
-        <div class="brand-sub">Real-time Financial Hub</div>
-      </div>
+    <div class="brand-section" on:click={() => ($activeTab = 'dashboard')} style="cursor: pointer;" title="Finora Dashboard">
+      <FinoraLogo size="md" showText={true} glow={true} />
     </div>
 
     <!-- Center Navigation Tabs -->
