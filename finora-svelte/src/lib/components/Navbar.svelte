@@ -3,6 +3,7 @@
   import FinoraLogo from './FinoraLogo.svelte';
   export let onOpenModal = () => {};
   export let onLockApp = () => {};
+  export let onOpenCloudSync = () => {};
 
   const tabs = [
     { id: 'dashboard', label: 'Ringkasan', icon: 'fa-solid fa-chart-pie' },
@@ -49,6 +50,24 @@
 
     <!-- Right Controls -->
     <div class="nav-actions">
+      <!-- Real-Time Cloud Sync Button -->
+      <button
+        class="cloud-sync-btn {$syncStatus}"
+        on:click={onOpenCloudSync}
+        title="Pengaturan Real-Time & Cloud Sync (Status: {$syncStatus})"
+      >
+        <span class="sync-dot"></span>
+        <span class="sync-label">
+          {#if $syncStatus === 'connected'}
+            Real-time
+          {:else if $syncStatus === 'connecting'}
+            Menghubungkan
+          {:else}
+            Cloud Sync
+          {/if}
+        </span>
+      </button>
+
       <!-- Currency Switcher -->
       <select bind:value={$currency} class="currency-select" title="Pilih Mata Uang">
         <option value="IDR">🇮🇩 IDR (Rp)</option>
@@ -282,6 +301,61 @@
   .lock-btn:hover {
     color: #f43f5e;
     border-color: rgba(244, 63, 94, 0.3);
+  }
+
+  .cloud-sync-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .cloud-sync-btn:hover {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--text-main);
+  }
+
+  .cloud-sync-btn .sync-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #64748b;
+  }
+
+  .cloud-sync-btn.connected {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+  }
+
+  .cloud-sync-btn.connected .sync-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+  }
+
+  .cloud-sync-btn.connecting {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+  }
+
+  .cloud-sync-btn.connecting .sync-dot {
+    background: #f59e0b;
+    animation: dotBlink 1s infinite;
+  }
+
+  @keyframes dotBlink {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
   }
 
   .cta-btn {

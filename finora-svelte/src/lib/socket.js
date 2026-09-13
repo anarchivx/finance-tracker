@@ -3,27 +3,67 @@ import { browser } from '$app/environment';
 import { transactions, budgets, goals, syncStatus, lastSyncTime } from './stores.js';
 
 let socket = null;
-const SERVER_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SERVER_URL) || 'http://localhost:3001';
 
-export function initSocket() {
-  if (!browser || socket) return socket;
+export function getServerUrl() {
+  if (browser) {
+    const saved = localStorage.getItem('finora_server_url');
+    if (saved && saved.trim()) return saved.trim().replace(/\/$/, '');
+  }
+  return (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SERVER_URL) || 'http://localhost:3001';
+}
+
+export function setServerUrl(newUrl) {
+  if (browser) {
+    const cleanUrl = (newUrl || '').trim().replace(/\/$/, '');
+    if (cleanUrl) {
+      localStorage.setItem('finora_server_url', cleanUrl);
+    } else {
+      localStorage.removeItem('finora_server_url');
+    }
+    reconnectSocket(cleanUrl || null);
+  }
+}
+
+export function reconnectSocket(overrideUrl = null) {
+  if (!browser) return null;
+  const targetUrl = overrideUrl || getServerUrl();
+
+  if (socket) {
+    try {
+      socket.removeAllListeners();
+      socket.disconnect();
+      socket = null;
+    } catch (e) {
+      console.warn('Socket disconnect error:', e);
+    }
+  }
+
+  return initSocket(targetUrl);
+}
+
+export function initSocket(customUrl = null) {
+  if (!browser) return null;
+  const targetUrl = customUrl || getServerUrl();
+
+  if (socket && socket.connected) return socket;
 
   syncStatus.set('connecting');
 
-  socket = io(SERVER_URL, {
-    reconnectionAttempts: 5,
-    reconnectionDelay: 2000,
-    timeout: 5000
+  socket = io(targetUrl, {
+    reconnectionAttempts: 8,
+    reconnectionDelay: 2500,
+    timeout: 7000,
+    transports: ['websocket', 'polling']
   });
 
   socket.on('connect', () => {
-    console.log('⚡ Connected to Finora SQLite backend!');
+    console.log(`⚡ Connected to Finora Real-time Backend at ${targetUrl}!`);
     syncStatus.set('connected');
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
   });
 
   socket.on('disconnect', () => {
-    console.warn('⚠️ Disconnected from Finora backend. Switching to local mode.');
+    console.warn('⚠️ Disconnected from Finora backend. Running in local cache mode.');
     syncStatus.set('offline');
   });
 
@@ -74,7 +114,7 @@ export function initSocket() {
 
   socket.on('budget:updated', (updatedBudget) => {
     budgets.update((list) => {
-      const idx = list.findIndex((b) => b.category === updatedBudget.category);
+      const idx = list.findIndex((b) => b.category.toLowerCase().trim() === updatedBudget.category.toLowerCase().trim());
       if (idx >= 0) {
         list[idx] = updatedBudget;
         return [...list];
@@ -84,7 +124,7 @@ export function initSocket() {
   });
 
   socket.on('budget:deleted', (category) => {
-    budgets.update((list) => list.filter((b) => b.category !== category));
+    budgets.update((list) => list.filter((b) => b.category.toLowerCase().trim() !== category.toLowerCase().trim()));
   });
 
   socket.on('goal:created', (newGoal) => {
@@ -106,18 +146,107 @@ export function initSocket() {
   });
 
   socket.on('goal:deleted', (id) => {
-    goals.update((list) => list.filter((g) => String(g.id) !== String(id)));
+    goals.update((list) => list.filter((g) => g.id !== id));
   });
 
   return socket;
 }
 
+export function getSocket() {
+  return socket;
+}
+
+// ==========================================================================
+// CLOUD CONNECTION TEST & DATA MIGRATION HELPERS
+// ==========================================================================
+
+export async function testServerConnection(testUrl = null) {
+  const target = (testUrl || getServerUrl()).trim().replace(/\/$/, '');
+  const startTime = Date.now();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch(`${target}/api/sync`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const latency = Date.now() - startTime;
+
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, latency, data, target };
+    }
+    return { success: false, latency, error: `HTTP ${res.status}: ${res.statusText}`, target };
+  } catch (err) {
+    return {
+      success: false,
+      error: err.name === 'AbortError' ? 'Koneksi timeout (6 detik)' : err.message,
+      target
+    };
+  }
+}
+
+export async function pushAllLocalDataToCloud() {
+  const target = getServerUrl();
+  let localTxs = [];
+  let localBudgets = [];
+  let localGoals = [];
+
+  transactions.subscribe((v) => (localTxs = v))();
+  budgets.subscribe((v) => (localBudgets = v))();
+  goals.subscribe((v) => (localGoals = v))();
+
+  const res = await fetch(`${target}/api/sync/push`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      transactions: localTxs,
+      budgets: localBudgets,
+      goals: localGoals
+    })
+  });
+
+  if (!res.ok) throw new Error(`HTTP Status ${res.status}`);
+  const data = await res.json();
+  lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  return data;
+}
+
+export async function pullCloudDataToLocal() {
+  const target = getServerUrl();
+  const res = await fetch(`${target}/api/sync`);
+  if (!res.ok) throw new Error(`HTTP Status ${res.status}`);
+  const data = await res.json();
+  if (data?.transactions) transactions.set(data.transactions);
+  if (data?.budgets) budgets.set(data.budgets);
+  if (data?.goals) goals.set(data.goals);
+  lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  return data;
+}
+
+// ==========================================================================
+// REAL-TIME BROADCAST ACTIONS
+// ==========================================================================
+
 export function emitAddTransaction(tx) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
+
     if (socket && socket.connected) {
-      socket.emit('transaction:add', tx, (res) => resolve(res));
+      socket.emit('transaction:add', tx, (res) => {
+        if (res?.success && res?.data) {
+          transactions.update((list) => {
+            if (list.some((t) => t.id === res.data.id)) return list;
+            return [res.data, ...list];
+          });
+        }
+        resolve(res);
+      });
     } else {
-      // Local fallback
+      // Local optimistic fallback
       const localTx = {
         ...tx,
         id: tx.id || `local-${Date.now()}`,
@@ -125,33 +254,40 @@ export function emitAddTransaction(tx) {
       };
       transactions.update((list) => [localTx, ...list]);
       resolve({ success: true, data: localTx, local: true });
+
+      // REST API asynchronous backup
+      fetch(`${target}/api/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tx)
+      }).catch(() => {});
     }
   });
 }
 
 export function emitDeleteTransaction(id) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
+
     // 1. Optimistic immediate local removal
     transactions.update((list) => list.filter((t) => String(t.id) !== String(id)));
 
-    // 2. Socket.IO broadcast to all clients
+    // 2. Socket.IO broadcast
     if (socket && socket.connected) {
       socket.emit('transaction:remove', id, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
     }
 
-    // 3. REST API guarantee to SQLite database
-    fetch(`${SERVER_URL}/api/transactions/${id}`, { method: 'DELETE' })
-      .then((res) => res.json())
-      .then((data) => resolve({ success: true, data }))
-      .catch((err) => {
-        console.warn('REST delete fallback error:', err);
-        resolve({ success: true, local: true });
-      });
+    // 3. REST API guarantee
+    fetch(`${target}/api/transactions/${id}`, { method: 'DELETE' }).catch(() => {});
   });
 }
 
 export function emitUpdateTransaction(id, txData) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
+
     if (socket && socket.connected) {
       socket.emit('transaction:update', { id, txData }, (res) => resolve(res));
     } else {
@@ -165,12 +301,19 @@ export function emitUpdateTransaction(id, txData) {
       });
       resolve({ success: true, local: true });
     }
+
+    fetch(`${target}/api/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(txData)
+    }).catch(() => {});
   });
 }
 
 export function emitResetTransactions() {
   return new Promise((resolve) => {
-    // 1. Socket broadcast
+    const target = getServerUrl();
+
     if (socket && socket.connected) {
       socket.emit('transaction:reset', (res) => {
         if (res?.data) transactions.set(res.data);
@@ -178,8 +321,7 @@ export function emitResetTransactions() {
       });
     }
 
-    // 2. REST API call to reset SQLite DB
-    fetch(`${SERVER_URL}/api/transactions/reset`, { method: 'POST' })
+    fetch(`${target}/api/transactions/reset`, { method: 'POST' })
       .then((res) => res.json())
       .then((data) => {
         if (data?.transactions) transactions.set(data.transactions);
@@ -194,10 +336,11 @@ export function emitResetTransactions() {
 
 export function emitUpdateBudget(category, limit) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
     const trimmedCat = category.trim();
     const numLimit = Number(limit) || 0;
 
-    // 1. Optimistic immediate local store update (Ensures 100% offline & Netlify reliability)
+    // 1. Optimistic immediate local store update
     budgets.update((list) => {
       const idx = list.findIndex((b) => b.category.toLowerCase().trim() === trimmedCat.toLowerCase());
       if (idx >= 0) {
@@ -219,11 +362,18 @@ export function emitUpdateBudget(category, limit) {
     } else {
       resolve({ success: true, local: true });
     }
+
+    fetch(`${target}/api/budgets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: trimmedCat, limit: numLimit })
+    }).catch(() => {});
   });
 }
 
 export function emitDeleteBudget(category) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
     const trimmedCat = category.trim();
 
     // 1. Optimistic immediate local removal
@@ -236,31 +386,41 @@ export function emitDeleteBudget(category) {
       resolve({ success: true, local: true });
     }
 
-    // 3. REST API delete fallback (if server is running)
-    fetch(`${SERVER_URL}/api/budgets/${encodeURIComponent(trimmedCat)}`, { method: 'DELETE' })
-      .then((res) => res.json())
-      .then((data) => resolve({ success: true, data }))
-      .catch(() => resolve({ success: true, local: true }));
+    // 3. REST API delete fallback
+    fetch(`${target}/api/budgets/${encodeURIComponent(trimmedCat)}`, { method: 'DELETE' }).catch(() => {});
   });
 }
 
 export function emitDepositGoal(id, amount) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
+
+    // 1. Optimistic local update
+    goals.update((list) => {
+      const g = list.find((item) => String(item.id) === String(id));
+      if (g) g.current_amount = (Number(g.current_amount) || 0) + Number(amount);
+      return [...list];
+    });
+
+    // 2. Socket emit
     if (socket && socket.connected) {
-      socket.emit('goal:deposit', { id, amount }, (res) => resolve(res));
+      socket.emit('goal:deposit', { id, amount: Number(amount) }, (res) => resolve(res));
     } else {
-      goals.update((list) => {
-        const item = list.find((g) => String(g.id) === String(id));
-        if (item) item.current_amount = (item.current_amount || 0) + Number(amount);
-        return [...list];
-      });
       resolve({ success: true, local: true });
     }
+
+    fetch(`${target}/api/goals/${id}/deposit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: Number(amount) })
+    }).catch(() => {});
   });
 }
 
 export function emitAddGoal(goalData) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
+
     if (socket && socket.connected) {
       socket.emit('goal:add', goalData, (res) => resolve(res));
     } else {
@@ -268,11 +428,19 @@ export function emitAddGoal(goalData) {
       goals.update((list) => [...list, newG]);
       resolve({ success: true, data: newG, local: true });
     }
+
+    fetch(`${target}/api/goals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(goalData)
+    }).catch(() => {});
   });
 }
 
 export function emitUpdateGoal(id, goalData) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
+
     if (socket && socket.connected) {
       socket.emit('goal:update', { id, goalData }, (res) => resolve(res));
     } else {
@@ -286,26 +454,30 @@ export function emitUpdateGoal(id, goalData) {
       });
       resolve({ success: true, local: true });
     }
+
+    fetch(`${target}/api/goals/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(goalData)
+    }).catch(() => {});
   });
 }
 
 export function emitDeleteGoal(id) {
   return new Promise((resolve) => {
+    const target = getServerUrl();
+
     // 1. Optimistic immediate local removal
     goals.update((list) => list.filter((g) => String(g.id) !== String(id)));
 
     // 2. Socket broadcast
     if (socket && socket.connected) {
       socket.emit('goal:remove', id, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
     }
 
     // 3. REST API delete
-    fetch(`${SERVER_URL}/api/goals/${id}`, { method: 'DELETE' })
-      .then((res) => res.json())
-      .then((data) => resolve({ success: true, data }))
-      .catch((err) => {
-        console.warn('REST delete goal error:', err);
-        resolve({ success: true, local: true });
-      });
+    fetch(`${target}/api/goals/${id}`, { method: 'DELETE' }).catch(() => {});
   });
 }

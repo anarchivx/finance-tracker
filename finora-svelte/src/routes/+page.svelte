@@ -12,6 +12,7 @@
   import SecurityLock from '$lib/components/SecurityLock.svelte';
   import ConfirmModal from '$lib/components/ConfirmModal.svelte';
   import SplashScreen from '$lib/components/SplashScreen.svelte';
+  import CloudSyncModal from '$lib/components/CloudSyncModal.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import { activeTab, theme, isPrivacyMode, currency } from '$lib/stores.js';
   import { onMount } from 'svelte';
@@ -26,6 +27,8 @@
   let isMobileMenuOpen = false;
   // Tampilan loading awal (Splash Screen)
   let showSplash = true;
+  // Modal Pusat Integrasi Real-Time & Cloud Sync
+  let isCloudModalOpen = false;
 
   function toggleTheme() {
     $theme = $theme === 'dark' ? 'light' : 'dark';
@@ -89,6 +92,7 @@
   <Navbar
     onOpenModal={() => openModal('expense')}
     onLockApp={lockApp}
+    onOpenCloudSync={() => (isCloudModalOpen = true)}
   />
 
   <!-- Main Dashboard Container -->
@@ -237,6 +241,12 @@
             <span class="tile-desc">{$theme === 'dark' ? 'Mode Gelap' : 'Mode Terang'}</span>
           </button>
 
+          <button class="sheet-tile" on:click={() => { isMobileMenuOpen = false; isCloudModalOpen = true; }}>
+            <div class="tile-icon sys-gradient"><i class="fa-solid fa-cloud-bolt text-indigo"></i></div>
+            <span class="tile-label">Cloud Sync</span>
+            <span class="tile-desc">Integrasi Real-Time</span>
+          </button>
+
           <button class="sheet-tile" on:click={() => { isMobileMenuOpen = false; lockApp(); }}>
             <div class="tile-icon lock-gradient"><i class="fa-solid fa-lock text-rose"></i></div>
             <span class="tile-label">Kunci PIN</span>
@@ -267,6 +277,12 @@
 
   <!-- Global In-App Confirmation Dialog -->
   <ConfirmModal />
+
+  <!-- Cloud Sync & Real-Time Settings Modal -->
+  <CloudSyncModal
+    isOpen={isCloudModalOpen}
+    onClose={() => (isCloudModalOpen = false)}
+  />
 
   <!-- Tampilan Loading Awal Pas Masuk Aplikasi (Splash Screen) -->
   {#if showSplash}

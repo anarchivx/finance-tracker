@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: finora-backend
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.0.0
