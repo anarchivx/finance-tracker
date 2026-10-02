@@ -3121,24 +3121,17 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1024px) {
+    .cockpit-wrapper {
+      gap: 1rem;
+    }
+
     .hero-section {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr !important;
     }
 
     .bento-matrix-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .card-number-embossed {
-      font-size: 0.95rem;
-      letter-spacing: 2px;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .cockpit-wrapper {
-      gap: 1rem;
+      grid-template-columns: 1fr !important;
     }
 
     .cockpit-top-bar {
@@ -3411,6 +3404,53 @@
     .tx-amount-pill {
       font-size: 0.8rem !important;
       padding: 3px 8px !important;
+    }
+
+    .stream-header-bar {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 0.75rem !important;
+    }
+
+    .stream-filter-segmented {
+      width: 100% !important;
+      display: flex !important;
+    }
+
+    .filter-seg-btn {
+      flex: 1 !important;
+      text-align: center !important;
+      padding: 0.4rem 0.4rem !important;
+      font-size: 0.75rem !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .luxury-titanium-card {
+      padding: 14px 12px 12px !important;
+      border-radius: 18px !important;
+    }
+
+    .balance-amount {
+      font-size: clamp(1.4rem, 6vw, 1.85rem) !important;
+    }
+
+    .card-number-embossed {
+      font-size: 0.75rem !important;
+      letter-spacing: 1px !important;
+    }
+
+    .cta-pill-btn {
+      padding: 8px 3px !important;
+      font-size: 0.72rem !important;
+    }
+
+    .telemetry-flow-card {
+      padding: 10px 8px !important;
+    }
+
+    .flow-card-amount {
+      font-size: 0.95rem !important;
     }
   }
 </style>

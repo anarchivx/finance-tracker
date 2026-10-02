@@ -460,25 +460,22 @@
   }
 
   @media (max-width: 1024px) {
+    .navbar-wrapper {
+      padding: 10px 16px;
+    }
     .nav-tabs {
       display: none;
     }
     .brand-sub {
       display: none;
     }
-  }
-
-  @media (max-width: 640px) {
-    .navbar-wrapper {
-      padding: 10px 14px;
-    }
     .brand-logo {
-      width: 36px;
-      height: 36px;
+      width: 38px;
+      height: 38px;
       font-size: 1.1rem;
     }
     .brand-title {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
     }
     .pro-tag {
       display: none;
@@ -501,6 +498,27 @@
     }
     .cta-btn {
       display: none; /* Sudah ada tombol tambah (+) mengambang di dock bawah */
+    }
+  }
+
+  @media (max-width: 480px) {
+    .navbar-wrapper {
+      padding: 8px 12px;
+    }
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      font-size: 1rem;
+    }
+    .brand-title {
+      font-size: 1.05rem;
+    }
+    .privacy-btn,
+    .theme-btn,
+    .cloud-btn {
+      width: 34px;
+      height: 34px;
+      font-size: 0.85rem;
     }
   }
 </style>

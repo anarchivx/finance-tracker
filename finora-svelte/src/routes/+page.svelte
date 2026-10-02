@@ -454,9 +454,15 @@
     }
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     .dashboard-body {
-      padding: 12px 14px;
+      padding: 12px 16px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .dashboard-body {
+      padding: 10px 12px;
     }
   }
 
