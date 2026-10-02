@@ -385,7 +385,7 @@
             </div>
             <button class="cta-pill-btn transfer full-width" on:click={() => ($activeTab = 'wallets')}>
               <div class="btn-icon-wrap"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
-              <span>Transfer Antar Rekening & Dompet</span>
+              <span>Transfer Saldo & Dompet</span>
             </button>
           </div>
         </div>
@@ -929,6 +929,9 @@
     flex-direction: column;
     gap: 1.75rem;
     width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   .ambient-glow {
@@ -1086,12 +1089,18 @@
     grid-template-columns: 1.6fr 1fr;
     gap: 1.5rem;
     align-items: stretch;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
   }
 
   .wealth-hub-column {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
   }
 
   /* Interactive Wallet Scroller Tabs */
@@ -1100,8 +1109,11 @@
     align-items: center;
     gap: 0.6rem;
     overflow-x: auto;
-    padding-bottom: 2px;
+    padding-bottom: 4px;
     scrollbar-width: none;
+    max-width: 100%;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
   }
 
   .wallet-nav-scroller::-webkit-scrollbar {
@@ -1195,6 +1207,9 @@
     flex-direction: column;
     justify-content: space-between;
     overflow: hidden;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
     background: linear-gradient(135deg, #131b2e 0%, #0a0e1a 50%, #151e30 100%);
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: 
@@ -3124,14 +3139,28 @@
   @media (max-width: 1024px) {
     .cockpit-wrapper {
       gap: 1rem;
+      max-width: 100% !important;
+      overflow-x: hidden !important;
     }
 
     .hero-section {
       grid-template-columns: 1fr !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      width: 100% !important;
+    }
+
+    .wealth-hub-column {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      width: 100% !important;
     }
 
     .bento-matrix-grid {
       grid-template-columns: 1fr !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      width: 100% !important;
     }
 
     .cockpit-top-bar {
@@ -3169,6 +3198,8 @@
     .wallet-nav-scroller {
       padding: 2px 2px 8px !important;
       gap: 6px !important;
+      max-width: 100% !important;
+      width: 100% !important;
     }
 
     .wallet-tab-pill {
@@ -3177,8 +3208,11 @@
     }
 
     .luxury-titanium-card {
-      padding: 16px 14px 14px;
-      border-radius: 20px;
+      padding: 16px 14px 14px !important;
+      border-radius: 20px !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
     }
 
     .card-tier-text {
@@ -3297,11 +3331,17 @@
       display: grid !important;
       grid-template-columns: 1fr 1fr !important;
       gap: 8px !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      width: 100% !important;
     }
 
     .telemetry-flow-card {
       padding: 12px 10px !important;
       border-radius: 16px !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
     }
 
     .flow-icon-circle {

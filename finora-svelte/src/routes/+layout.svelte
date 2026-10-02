@@ -24,6 +24,13 @@
     // Auto-connect to Supabase Cloud if credentials exist (env var or localStorage)
     if (browser) {
       initSupabaseSync();
+
+      // Ensure PWA service worker checks for fresh assets immediately
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.update();
+        }).catch(() => {});
+      }
     }
 
     // Capture PWA installation prompt
