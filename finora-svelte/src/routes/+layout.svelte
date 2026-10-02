@@ -25,11 +25,13 @@
     if (browser) {
       initSupabaseSync();
 
-      // Ensure PWA service worker checks for fresh assets immediately
+      // Ensure PWA service worker is registered & checks for fresh assets
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then((reg) => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((reg) => {
           reg.update();
-        }).catch(() => {});
+        }).catch((err) => {
+          console.warn('SW registration:', err);
+        });
       }
     }
 

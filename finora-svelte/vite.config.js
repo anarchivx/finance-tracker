@@ -13,16 +13,27 @@ export default defineConfig({
 				cleanupOutdatedCaches: true
 			},
 			manifest: {
-				name: 'Finora',
+				name: 'Finora AI Pro - Intelligent Wealth Hub',
 				short_name: 'Finora',
-				description: 'Long-Term Personal Finance & Auto Breakdown',
+				description: 'Personal Finance, Multi-Wallet & AI Realtime Wealth Hub',
+				start_url: '/',
+				scope: '/',
+				display: 'standalone',
+				orientation: 'portrait-primary',
 				theme_color: '#6366f1',
-				background_color: '#0f172a',
+				background_color: '#090d16',
 				icons: [
 					{
-						src: 'https://cdn-icons-png.flaticon.com/512/2489/2489756.png',
+						src: '/pwa-192x192.png',
+						sizes: '192x192',
+						type: 'image/png',
+						purpose: 'any maskable'
+					},
+					{
+						src: '/pwa-512x512.png',
 						sizes: '512x512',
-						type: 'image/png'
+						type: 'image/png',
+						purpose: 'any maskable'
 					}
 				]
 			}
