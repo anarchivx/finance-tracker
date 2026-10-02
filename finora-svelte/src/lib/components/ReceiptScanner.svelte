@@ -524,6 +524,156 @@
     }
   }
 
+  function runSimulationScan(data) {
+    saveSuccessMessage = '';
+    ocrError = '';
+    isScanning = true;
+    scanProgress = 10;
+    ocrStatusStage = 'Memuat contoh data struk preset...';
+    previewImage = null;
+    isRealOcrResult = false;
+    rawOcrText = `[Contoh Struk Preset]\n${data.store}\nTotal: Rp ${data.total}\nKategori: ${data.category}\nMetode: ${data.method}`;
+
+    const interval = setInterval(() => {
+      scanProgress += 20;
+      if (scanProgress >= 100) {
+        clearInterval(interval);
+        isScanning = false;
+        scannedReceipt = data;
+        storeName = data.store;
+        receiptDate = new Date().toISOString().split('T')[0];
+        receiptTime = new Date().toTimeString().slice(0, 5);
+        totalAmount = String(data.total);
+        category = data.category;
+        paymentMethod = data.method;
+        notes = data.notes;
+        itemizedLines = data.items || [];
+      }
+    }, 150);
+  }
+
+  let isDragging = false;
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    isDragging = true;
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault();
+    isDragging = false;
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    isDragging = false;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  }
+
+  function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  }
+
+  function processFile(file) {
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imgUrl = event.target.result;
+      await runRealOcrScan(imgUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function openLiveCamera() {
+    cameraError = '';
+    isCameraModalOpen = true;
+    try {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((t) => t.stop());
+      }
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      if (videoElement) {
+        videoElement.srcObject = mediaStream;
+        await videoElement.play();
+      }
+    } catch (err) {
+      console.warn('Camera access error:', err);
+      cameraError = 'Izin kamera belum aktif atau tidak didukung di peramban ini. Anda bisa menggunakan tombol kamera bawaan HP di bawah ini.';
+    }
+  }
+
+  function toggleCamera() {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    openLiveCamera();
+  }
+
+  function closeLiveCamera() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((t) => t.stop());
+      mediaStream = null;
+    }
+    isCameraModalOpen = false;
+    cameraError = '';
+  }
+
+  async function snapPhoto() {
+    if (!videoElement) return;
+    isTakingPhoto = true;
+    setTimeout(async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElement.videoWidth || 1280;
+      canvas.height = videoElement.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      closeLiveCamera();
+      isTakingPhoto = false;
+
+      await runRealOcrScan(dataUrl);
+    }, 200);
+  }
+
+  onDestroy(() => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((t) => t.stop());
+    }
+  });
+
+  function removeItem(index) {
+    itemizedLines = itemizedLines.filter((_, i) => i !== index);
+    const newTotal = itemizedLines.reduce((acc, it) => acc + (it.price * it.qty), 0);
+    if (newTotal > 0) {
+      totalAmount = String(newTotal);
+    }
+  }
+
+  function handleAddItem() {
+    if (!newItemName.trim() || !newItemPrice || Number(newItemPrice) <= 0) return;
+    itemizedLines = [
+      ...itemizedLines,
+      { name: newItemName.trim(), qty: 1, price: Number(newItemPrice) }
+    ];
+    newItemName = '';
+    newItemPrice = '';
+    showAddItemInput = false;
+
+    const newTotal = itemizedLines.reduce((acc, it) => acc + (it.price * it.qty), 0);
+    if (newTotal > 0) {
+      totalAmount = String(newTotal);
+    }
+  }
+
   async function handleSaveTransaction() {
     if (!totalAmount || Number(totalAmount) <= 0) return;
 
