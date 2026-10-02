@@ -1,5 +1,6 @@
 <script>
   import { emitAddTransaction, emitUpdateTransaction } from '../socket.js';
+  import { wallets, currency, formatCurrency } from '../stores.js';
   import confetti from 'canvas-confetti';
 
   export let isOpen = false;
@@ -14,33 +15,41 @@
   let date = new Date().toISOString().split('T')[0];
   let time = new Date().toTimeString().slice(0, 5);
   let paymentMethod = 'QRIS';
+  let walletId = '';
   let notes = '';
   let isSubmitting = false;
 
   let prevIsOpen = false;
-  $: if (isOpen && !prevIsOpen) {
-    if (editingTransaction) {
-      type = editingTransaction.type || 'expense';
-      description = editingTransaction.description || '';
-      amount = String(editingTransaction.amount || '');
-      category = editingTransaction.category || (type === 'income' ? 'Gaji' : 'Makanan & Minuman');
-      date = editingTransaction.date || new Date().toISOString().split('T')[0];
-      time = editingTransaction.time || new Date().toTimeString().slice(0, 5);
-      paymentMethod = editingTransaction.payment_method || editingTransaction.method || 'QRIS';
-      notes = editingTransaction.notes || '';
-    } else {
-      type = initialType || 'expense';
-      category = type === 'income' ? 'Gaji' : 'Makanan & Minuman';
-      description = '';
-      amount = '';
-      notes = '';
-      date = new Date().toISOString().split('T')[0];
-      time = new Date().toTimeString().slice(0, 5);
-      paymentMethod = type === 'income' ? 'Bank Transfer' : 'QRIS';
+  let prevEditingTx = null;
+  $: if (isOpen) {
+    if (!prevIsOpen || editingTransaction !== prevEditingTx) {
+      prevEditingTx = editingTransaction;
+      if (editingTransaction) {
+        type = editingTransaction.type || 'expense';
+        description = editingTransaction.description || '';
+        amount = String(editingTransaction.amount || '');
+        category = editingTransaction.category || (type === 'income' ? 'Gaji' : 'Makanan & Minuman');
+        date = editingTransaction.date || new Date().toISOString().split('T')[0];
+        time = editingTransaction.time || new Date().toTimeString().slice(0, 5);
+        paymentMethod = editingTransaction.payment_method || editingTransaction.method || 'QRIS';
+        walletId = editingTransaction.walletId || ($wallets[0]?.id || '');
+        notes = editingTransaction.notes || '';
+      } else {
+        type = initialType || 'expense';
+        category = type === 'income' ? 'Gaji' : 'Makanan & Minuman';
+        description = '';
+        amount = '';
+        notes = '';
+        date = new Date().toISOString().split('T')[0];
+        time = new Date().toTimeString().slice(0, 5);
+        paymentMethod = type === 'income' ? 'Bank Transfer' : 'QRIS';
+        walletId = $wallets[0]?.id || '';
+      }
+      prevIsOpen = true;
     }
-    prevIsOpen = true;
-  } else if (!isOpen) {
+  } else {
     prevIsOpen = false;
+    prevEditingTx = null;
   }
 
   const expenseCategories = [
@@ -100,6 +109,7 @@
         date,
         time: time || new Date().toTimeString().slice(0, 5),
         payment_method: paymentMethod,
+        walletId,
         notes
       };
 
@@ -264,7 +274,7 @@
           </div>
 
           <div class="form-group">
-            <label for="modal-method"><i class="fa-solid fa-wallet"></i> Metode Bayar</label>
+            <label for="modal-method"><i class="fa-solid fa-credit-card"></i> Metode Bayar</label>
             <select id="modal-method" bind:value={paymentMethod} class="input-custom select-custom">
               <option value="QRIS">QRIS</option>
               <option value="Tunai">Tunai / Cash</option>
@@ -275,6 +285,24 @@
               <option value="Kartu Kredit">Kartu Kredit</option>
             </select>
           </div>
+        </div>
+
+        <!-- Wallet / Account Link -->
+        <div class="form-group">
+          <label for="modal-wallet">
+            <i class="fa-solid fa-wallet"></i>
+            {type === 'income' ? 'Masuk ke Rekening / Dompet' : 'Potong dari Rekening / Dompet'}
+          </label>
+          <select id="modal-wallet" bind:value={walletId} class="input-custom select-custom">
+            {#if $wallets.length === 0}
+              <option value="">Tanpa Dompet Khusus</option>
+            {/if}
+            {#each $wallets as w}
+              <option value={w.id}>
+                {w.name} — Tersedia: {formatCurrency(w.balance, $currency)}
+              </option>
+            {/each}
+          </select>
         </div>
 
         <!-- Notes -->
@@ -332,8 +360,9 @@
     width: 100%;
     max-width: 540px;
     padding: 28px;
-    background: #0f172a;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--modal-bg, #0f172a);
+    color: var(--text-main);
+    border: 1px solid var(--border-glass);
     border-radius: var(--radius-xl);
     box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85), 0 0 40px rgba(99, 102, 241, 0.2);
     max-height: 92vh;
@@ -384,6 +413,7 @@
   .modal-header h3 {
     font-size: 1.18rem;
     font-weight: 800;
+    color: var(--text-main);
   }
 
   .close-btn {
@@ -425,17 +455,17 @@
   }
 
   .type-btn.active-expense {
-    background: linear-gradient(135deg, rgba(244, 63, 94, 0.25) 0%, rgba(225, 29, 72, 0.35) 100%);
-    color: #ffffff;
-    border: 1px solid rgba(244, 63, 94, 0.5);
-    box-shadow: 0 4px 15px rgba(244, 63, 94, 0.25);
+    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #e11d48;
+    box-shadow: 0 4px 15px rgba(244, 63, 94, 0.35);
   }
 
   .type-btn.active-income {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%);
-    color: #ffffff;
-    border: 1px solid rgba(16, 185, 129, 0.5);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #059669;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
   }
 
   .modal-form {
@@ -642,5 +672,73 @@
     .submit-btn {
       flex: 2;
     }
+  }
+
+  :global([data-theme="light"]) .modal-card {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: rgba(148, 163, 184, 0.3) !important;
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  :global([data-theme="light"]) .modal-header h3 {
+    color: #0f172a !important;
+  }
+
+  :global([data-theme="light"]) .type-switch {
+    background: #f1f5f9 !important;
+    border-color: rgba(148, 163, 184, 0.3) !important;
+  }
+
+  :global([data-theme="light"]) .type-btn {
+    color: #475569 !important;
+  }
+
+  :global([data-theme="light"]) .type-btn:hover {
+    color: #0f172a !important;
+    background: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  :global([data-theme="light"]) .pill-btn {
+    background: #f1f5f9 !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+    color: #334155 !important;
+  }
+
+  :global([data-theme="light"]) .pill-btn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  :global([data-theme="light"]) .cat-chip {
+    background: #f8fafc !important;
+    border-color: rgba(148, 163, 184, 0.3) !important;
+    color: #334155 !important;
+  }
+
+  :global([data-theme="light"]) .cat-chip:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+  }
+
+  :global([data-theme="light"]) .cat-chip.selected {
+    background: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+    color: #ffffff !important;
+  }
+
+  :global([data-theme="light"]) .amount-input {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+  }
+
+  :global([data-theme="light"]) .currency-prefix {
+    color: #64748b !important;
+  }
+
+  :global([data-theme="light"]) .select-custom option {
+    background: #ffffff !important;
+    color: #0f172a !important;
   }
 </style>

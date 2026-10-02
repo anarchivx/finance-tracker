@@ -14,24 +14,47 @@
   let step = 1; // 1: enter pin, 2: confirm pin
   let errorMessage = '';
   let isShaking = false;
+  let activeKeyIndex = null; // For keyboard press feedback animation
 
   const STORAGE_KEY = 'finora_security_pin';
 
-  // Reactive: Setiap kali dialog kunci terbuka, selalu muat ulang PIN dari localStorage
-  $: if (browser && isLocked) {
-    storedPin = localStorage.getItem(STORAGE_KEY);
-    if (!storedPin) {
-      // Hanya masuk mode buat PIN jika belum pernah ada PIN tersimpan sama sekali
-      isSettingNewPin = true;
-      step = 1;
-    } else {
-      // Jika sudah pernah buat PIN, selalu masuk ke mode buka kunci (Unlock)
-      isSettingNewPin = false;
-      step = 1;
+  function getServerUrl() {
+    if (!browser) return '';
+    if (window.location.port === '5173') return 'http://localhost:3001';
+    return window.location.origin;
+  }
+
+  async function checkServerPinStatus() {
+    if (!browser) return;
+    try {
+      const res = await fetch(`${getServerUrl()}/api/auth/status`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.hasPin) {
+          isSettingNewPin = false;
+        } else {
+          isSettingNewPin = true;
+        }
+      } else {
+        fallbackToLocalPin();
+      }
+    } catch (e) {
+      fallbackToLocalPin();
     }
+  }
+
+  function fallbackToLocalPin() {
+    storedPin = localStorage.getItem(STORAGE_KEY);
+    isSettingNewPin = !storedPin;
+  }
+
+  // Reactive: Setiap kali dialog kunci terbuka, periksa status PIN dari server
+  $: if (browser && isLocked) {
+    checkServerPinStatus();
     pinInput = '';
     confirmPin = '';
     errorMessage = '';
+    step = 1;
   }
 
   const keys = [
@@ -61,7 +84,7 @@
     errorMessage = '';
   }
 
-  function evaluatePin() {
+  async function evaluatePin() {
     if (isSettingNewPin) {
       if (step === 1) {
         confirmPin = pinInput;
@@ -69,14 +92,33 @@
         step = 2;
       } else {
         if (pinInput === confirmPin) {
-          localStorage.setItem(STORAGE_KEY, pinInput);
-          storedPin = pinInput;
-          isLocked = false;
-          isSettingNewPin = false;
-          step = 1;
-          pinInput = '';
-          confirmPin = '';
-          onClose();
+          try {
+            const res = await fetch(`${getServerUrl()}/api/auth/set-pin`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ newPin: pinInput })
+            });
+            const data = await res.json();
+            if (data.success) {
+              localStorage.setItem(STORAGE_KEY, pinInput);
+              storedPin = pinInput;
+              isLocked = false;
+              isSettingNewPin = false;
+              step = 1;
+              pinInput = '';
+              confirmPin = '';
+              onClose();
+            } else {
+              triggerError(data.error || 'Gagal menyimpan PIN ke server.');
+            }
+          } catch (e) {
+            // Offline fallback
+            localStorage.setItem(STORAGE_KEY, pinInput);
+            storedPin = pinInput;
+            isLocked = false;
+            isSettingNewPin = false;
+            onClose();
+          }
         } else {
           triggerError('Konfirmasi PIN tidak cocok. Silakan ulangi.');
           step = 1;
@@ -85,16 +127,30 @@
         }
       }
     } else {
-      if (storedPin) {
-        if (pinInput === storedPin) {
+      try {
+        const res = await fetch(`${getServerUrl()}/api/auth/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: pinInput })
+        });
+        const data = await res.json();
+        if (data.success) {
           isLocked = false;
           pinInput = '';
           onClose();
         } else {
           triggerError('PIN Salah. Akses keamanan ditolak.');
         }
-      } else {
-        startSetupPin();
+      } catch (e) {
+        // Offline fallback
+        storedPin = localStorage.getItem(STORAGE_KEY);
+        if (storedPin && pinInput === storedPin) {
+          isLocked = false;
+          pinInput = '';
+          onClose();
+        } else {
+          triggerError('PIN Salah. Akses keamanan ditolak.');
+        }
       }
     }
   }
@@ -127,21 +183,52 @@
   function resetPinConfirm() {
     requestConfirm({
       title: 'Lupa / Reset PIN Keamanan',
-      message: 'Apakah Anda ingin mengatur ulang PIN keamanan Finora? PIN lama akan dihapus dan Anda akan diminta membuat 4 angka PIN baru.',
+      message: 'Apakah Anda ingin mengatur ulang Master PIN Finora di server? Anda akan diminta membuat 4 angka PIN baru yang berlaku di seluruh perangkat.',
       confirmText: 'Reset PIN',
       confirmStyle: 'warning',
       icon: 'fa-key',
-      onConfirm: () => {
+      onConfirm: async () => {
+        try {
+          await fetch(`${getServerUrl()}/api/auth/reset`, { method: 'POST' });
+        } catch (e) {}
         localStorage.removeItem(STORAGE_KEY);
         storedPin = null;
         startSetupPin();
       }
     });
   }
+
+  function handleKeydown(e) {
+    if (!isLocked) return;
+
+    if (e.key >= '0' && e.key <= '9') {
+      e.preventDefault();
+      activeKeyIndex = e.key;
+      setTimeout(() => (activeKeyIndex = null), 150);
+      handleKeyPress(e.key);
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      activeKeyIndex = 'backspace';
+      setTimeout(() => (activeKeyIndex = null), 150);
+      handleBackspace();
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 {#if isLocked}
   <div class="lock-overlay" role="dialog" aria-modal="true">
+    <!-- Ambient Security Cyber-Glows & Laser Radar -->
+    <div class="vault-bg-radar">
+      <div class="radar-ring ring-1"></div>
+      <div class="radar-ring ring-2"></div>
+      <div class="radar-ring ring-3"></div>
+      <div class="radar-laser-sweep"></div>
+    </div>
+    <div class="ambient-glow glow-cyan"></div>
+    <div class="ambient-glow glow-violet"></div>
+
     <div class="lock-modal-card" class:shake={isShaking}>
       <!-- Top Close button: Hanya jika sedang ubah PIN dan sudah punya PIN tersimpan -->
       {#if isSettingNewPin && storedPin}
@@ -150,10 +237,18 @@
         </button>
       {/if}
 
-      <!-- Glowing Finora Security Badge -->
-      <div class="shield-badge-container">
-        <div class="shield-pulse-ring"></div>
-        <FinoraLogo size="lg" animated={true} glow={true} />
+      <!-- Top Security Protocol Badge -->
+      <div class="security-protocol-badge">
+        <span class="protocol-dot"></span>
+        <span>256-BIT CLOUD VAULT ENCRYPTED</span>
+      </div>
+
+      <!-- 3D Holographic Vault Bezel with Laser Scan -->
+      <div class="vault-emblem-container">
+        <div class="vault-outer-ring"></div>
+        <div class="vault-bezel-box">
+          <FinoraLogo size="lg" animated={true} glow={true} />
+        </div>
       </div>
 
       <!-- Title & Subtitle Hierarchy -->
@@ -167,18 +262,19 @@
         </h2>
         <p class="lock-subtitle">
           {#if isSettingNewPin}
-            {step === 1 ? 'Buat 4-digit PIN rahasia untuk melindungi data finansial Anda' : 'Masukkan kembali 4 angka PIN yang sama untuk verifikasi'}
+            {step === 1 ? 'Buat 4-digit PIN rahasia untuk melindungi aset finansial Anda' : 'Masukkan kembali 4 angka PIN yang sama untuk verifikasi'}
           {:else}
             Masukkan 4-digit kode akses untuk membuka data finansial Anda
           {/if}
         </p>
       </div>
 
-      <!-- PIN Indicator Dots -->
+      <!-- Glowing Futuristic PIN Indicator Pods -->
       <div class="dots-wrapper">
         {#each [0, 1, 2, 3] as idx}
-          <div class="pin-pill" class:active={pinInput.length > idx}>
-            <div class="pin-pill-inner"></div>
+          {@const isFilled = pinInput.length > idx}
+          <div class="pin-capsule-pod" class:filled={isFilled}>
+            <div class="pod-inner-core"></div>
           </div>
         {/each}
       </div>
@@ -191,12 +287,13 @@
         </div>
       {/if}
 
-      <!-- Elegant iOS / Revolut Style Keypad -->
+      <!-- Tactile Cyber-Keypad (Apple / Revolut High-End Feel) -->
       <div class="keypad-layout">
         {#each keys as key}
           <button
             type="button"
             class="keypad-button"
+            class:pressed={activeKeyIndex === key.num}
             on:click={() => handleKeyPress(key.num)}
           >
             <span class="key-digit">{key.num}</span>
@@ -214,14 +311,17 @@
           on:click={isSettingNewPin ? cancelSetup : startSetupPin}
           title={isSettingNewPin ? 'Batal Atur' : 'Atur / Ganti PIN'}
         >
-          <i class={isSettingNewPin ? 'fa-solid fa-arrow-rotate-left' : 'fa-solid fa-key'}></i>
-          <span class="utility-label">{isSettingNewPin ? 'Batal' : 'Ubah PIN'}</span>
+          <div class="utility-icon-box">
+            <i class={isSettingNewPin ? 'fa-solid fa-arrow-rotate-left' : 'fa-solid fa-key'}></i>
+          </div>
+          <span class="utility-label">{isSettingNewPin ? 'Batal' : 'Ganti PIN'}</span>
         </button>
 
         <!-- Zero Digit -->
         <button
           type="button"
           class="keypad-button"
+          class:pressed={activeKeyIndex === '0'}
           on:click={() => handleKeyPress('0')}
         >
           <span class="key-digit">0</span>
@@ -231,11 +331,14 @@
         <!-- Backspace -->
         <button
           type="button"
-          class="keypad-button utility-btn"
+          class="keypad-button utility-btn backspace"
+          class:pressed={activeKeyIndex === 'backspace'}
           on:click={handleBackspace}
           title="Hapus Digit Terakhir"
         >
-          <i class="fa-solid fa-delete-left"></i>
+          <div class="utility-icon-box danger">
+            <i class="fa-solid fa-delete-left"></i>
+          </div>
           <span class="utility-label">Hapus</span>
         </button>
       </div>
@@ -254,69 +357,171 @@
 {/if}
 
 <style>
+  /* ========================================================================= */
+  /* FULLSCREEN CYBER-VAULT OVERLAY                                            */
+  /* ========================================================================= */
   .lock-overlay {
     position: fixed;
     inset: 0;
     z-index: 5000;
-    background: radial-gradient(circle at 50% 30%, rgba(30, 27, 75, 0.95) 0%, rgba(6, 9, 18, 0.98) 100%);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
+    background: radial-gradient(circle at 50% 35%, rgba(15, 23, 42, 0.96) 0%, rgba(6, 9, 18, 0.99) 100%);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
-    animation: lockFadeIn 0.25s ease-out;
+    padding: 24px;
+    overflow: hidden;
+    animation: lockFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   @keyframes lockFadeIn {
-    from { opacity: 0; transform: scale(0.97); }
+    from { opacity: 0; transform: scale(0.96); }
     to { opacity: 1; transform: scale(1); }
   }
 
+  /* Ambient Radar & Halos */
+  .vault-bg-radar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 600px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .radar-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px dashed rgba(99, 102, 241, 0.15);
+    pointer-events: none;
+  }
+
+  .ring-1 { width: 300px; height: 300px; animation: radarSpin 30s linear infinite; }
+  .ring-2 { width: 460px; height: 460px; animation: radarSpinReverse 45s linear infinite; border-color: rgba(6, 182, 212, 0.12); }
+  .ring-3 { width: 620px; height: 620px; border-color: rgba(168, 85, 247, 0.08); }
+
+  @keyframes radarSpin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  @keyframes radarSpinReverse {
+    from { transform: translate(-50%, -50%) rotate(360deg); }
+    to { transform: translate(-50%, -50%) rotate(0deg); }
+  }
+
+  .ambient-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(140px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-cyan {
+    bottom: 10%;
+    left: 20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.16) 0%, transparent 70%);
+  }
+
+  .glow-violet {
+    top: 10%;
+    right: 20%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+  }
+
+  /* ========================================================================= */
+  /* VAULT MODAL CARD                                                          */
+  /* ========================================================================= */
   .lock-modal-card {
     position: relative;
+    z-index: 1;
     width: 100%;
-    max-width: 480px;
-    padding: 36px 30px 28px;
-    background: linear-gradient(180deg, rgba(22, 30, 49, 0.9) 0%, rgba(11, 16, 30, 0.98) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 32px;
+    max-width: 440px;
+    padding: 38px 32px 30px;
+    background: linear-gradient(165deg, rgba(22, 32, 54, 0.88) 0%, rgba(10, 15, 29, 0.96) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 34px;
     box-shadow: 
-      0 30px 70px -15px rgba(0, 0, 0, 0.9),
-      0 0 50px rgba(99, 102, 241, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      0 35px 80px -15px rgba(0, 0, 0, 0.85),
+      0 0 50px -10px rgba(99, 102, 241, 0.3),
+      inset 0 1px 1px rgba(255, 255, 255, 0.25);
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
   }
 
   .dismiss-btn {
     position: absolute;
-    top: 18px;
-    right: 18px;
-    width: 34px;
-    height: 34px;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-dim);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
     font-size: 0.95rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
   }
 
   .dismiss-btn:hover {
     color: #ffffff;
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: scale(1.08);
   }
 
-  /* 3D Shield Badge with ambient glow */
-  .shield-badge-container {
+  /* Security Protocol Pill */
+  .security-protocol-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 99px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #34d399;
+    font-size: 0.675rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+  }
+
+  .protocol-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: dotPulse 1.8s infinite;
+  }
+
+  @keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.3); }
+  }
+
+  /* Vault Emblem */
+  .vault-emblem-container {
     position: relative;
     margin-bottom: 20px;
     display: flex;
@@ -324,110 +529,95 @@
     justify-content: center;
   }
 
-  .shield-pulse-ring {
+  .vault-outer-ring {
     position: absolute;
-    width: 80px;
-    height: 80px;
-    border-radius: 26px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%);
-    animation: ringGlow 3s infinite ease-in-out;
+    width: 92px;
+    height: 92px;
+    border-radius: 30px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, transparent 70%);
+    animation: beaconPulse 3s infinite ease-in-out;
   }
 
-  @keyframes ringGlow {
+  @keyframes beaconPulse {
     0%, 100% { transform: scale(0.9); opacity: 0.5; }
-    50% { transform: scale(1.15); opacity: 0.85; }
+    50% { transform: scale(1.2); opacity: 0.85; }
   }
 
-  .shield-icon-box {
+  .vault-bezel-box {
     position: relative;
-    width: 64px;
-    height: 64px;
-    border-radius: 22px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.75rem;
-    color: #ffffff;
-    box-shadow: 
-      0 10px 25px -5px rgba(99, 102, 241, 0.5),
-      inset 0 2px 4px rgba(255, 255, 255, 0.3);
   }
 
   /* Typography */
   .lock-typography {
-    margin-bottom: 26px;
+    margin-bottom: 24px;
     width: 100%;
-    max-width: 100%;
   }
 
   .lock-title {
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     font-weight: 800;
     letter-spacing: -0.5px;
     margin-bottom: 8px;
-    background: linear-gradient(135deg, #ffffff 30%, #cbd5e1 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .lock-subtitle {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     color: #94a3b8;
     line-height: 1.45;
-    white-space: nowrap;
   }
 
-  @media (max-width: 480px) {
-    .lock-modal-card {
-      max-width: 100%;
-      padding: 28px 18px 24px;
-    }
-    .lock-subtitle {
-      font-size: 0.76rem;
-      white-space: normal;
-    }
-  }
-
-  /* Passcode Dots */
+  /* ========================================================================= */
+  /* GLOWING PIN INDICATOR PODS                                                */
+  /* ========================================================================= */
   .dots-wrapper {
     display: flex;
     justify-content: center;
     gap: 18px;
-    margin-bottom: 26px;
+    margin-bottom: 28px;
   }
 
-  .pin-pill {
-    width: 18px;
-    height: 18px;
+  .pin-capsule-pod {
+    position: relative;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.04);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  .pin-pill-inner {
+  .pod-inner-core {
     width: 0;
     height: 0;
     border-radius: 50%;
     background: transparent;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  .pin-pill.active {
-    border-color: #6366f1;
-    background: rgba(99, 102, 241, 0.2);
-    box-shadow: 0 0 14px rgba(99, 102, 241, 0.6);
-    transform: scale(1.15);
+  .pin-capsule-pod.filled {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.2);
+    box-shadow: 
+      0 0 16px rgba(56, 189, 248, 0.8),
+      0 0 30px rgba(99, 102, 241, 0.5);
+    transform: scale(1.18);
   }
 
-  .pin-pill.active .pin-pill-inner {
-    width: 10px;
-    height: 10px;
-    background: linear-gradient(135deg, #6366f1, #38bdf8);
+  .pin-capsule-pod.filled .pod-inner-core {
+    width: 11px;
+    height: 11px;
+    background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+    box-shadow: 0 0 8px #38bdf8;
   }
 
   /* Error Banner */
@@ -436,13 +626,14 @@
     align-items: center;
     gap: 8px;
     font-size: 0.78rem;
-    font-weight: 600;
+    font-weight: 700;
     color: #fb7185;
-    background: rgba(244, 63, 94, 0.12);
-    border: 1px solid rgba(244, 63, 94, 0.25);
-    padding: 6px 14px;
-    border-radius: var(--radius-full);
-    margin-bottom: 20px;
+    background: rgba(244, 63, 94, 0.14);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    padding: 7px 16px;
+    border-radius: 99px;
+    margin-bottom: 22px;
+    box-shadow: 0 0 20px rgba(244, 63, 94, 0.25);
     animation: fadeIn 0.2s ease;
   }
 
@@ -451,23 +642,25 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Keypad Layout */
+  /* ========================================================================= */
+  /* TACTILE KEYPAD LAYOUT                                                     */
+  /* ========================================================================= */
   .keypad-layout {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
+    gap: 16px;
     width: 100%;
-    max-width: 290px;
-    margin-bottom: 16px;
+    max-width: 310px;
+    margin-bottom: 18px;
   }
 
   .keypad-button {
-    width: 72px;
-    height: 72px;
+    width: 76px;
+    height: 76px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.035);
-    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -475,35 +668,42 @@
     margin: 0 auto;
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 
+      0 6px 16px -4px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
 
   .keypad-button:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 
+      0 10px 24px -4px rgba(0, 0, 0, 0.5),
+      0 0 20px rgba(99, 102, 241, 0.3);
   }
 
-  .keypad-button:active {
+  .keypad-button:active,
+  .keypad-button.pressed {
     transform: scale(0.92);
-    background: rgba(99, 102, 241, 0.35);
-    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.3);
+    border-color: #6366f1;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.6);
   }
 
   .key-digit {
-    font-size: 1.6rem;
-    font-weight: 700;
+    font-size: 1.7rem;
+    font-weight: 800;
     color: #f8fafc;
     line-height: 1.1;
   }
 
   .key-subtext {
-    font-size: 0.6rem;
+    font-size: 0.625rem;
     font-weight: 700;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.8px;
     color: #64748b;
     margin-top: 1px;
   }
@@ -513,25 +713,37 @@
     background: transparent;
     border-color: transparent;
     box-shadow: none;
-    color: #94a3b8;
     gap: 4px;
   }
 
-  .utility-btn i {
-    font-size: 1.25rem;
+  .utility-icon-box {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+  }
+
+  .utility-icon-box.danger {
+    background: rgba(244, 63, 94, 0.14);
+    color: #f43f5e;
   }
 
   .utility-label {
-    font-size: 0.65rem;
-    font-weight: 600;
+    font-size: 0.675rem;
+    font-weight: 700;
     letter-spacing: 0.5px;
     color: #94a3b8;
   }
 
   .utility-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   .utility-btn:hover .utility-label {
@@ -544,25 +756,26 @@
     align-items: center;
     justify-content: center;
     min-height: 28px;
-    margin-top: 6px;
+    margin-top: 4px;
   }
 
   .footer-link-btn {
     background: transparent;
     border: none;
     color: #64748b;
-    font-size: 0.75rem;
+    font-size: 0.775rem;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;
-    transition: color 0.15s ease;
+    transition: all 0.2s ease;
   }
 
   .footer-link-btn:hover {
-    color: #a5b4fc;
+    color: #818cf8;
+    transform: translateY(-1px);
   }
 
   /* Shake animation */
@@ -577,19 +790,21 @@
     40%, 60% { transform: translate3d(7px, 0, 0); }
   }
 
-  @media (max-width: 400px) {
+  @media (max-width: 440px) {
     .lock-modal-card {
-      padding: 28px 18px 20px;
+      padding: 30px 20px 24px;
+      border-radius: 28px;
     }
     .keypad-layout {
-      gap: 10px;
+      gap: 12px;
+      max-width: 280px;
     }
     .keypad-button {
-      width: 64px;
-      height: 64px;
+      width: 68px;
+      height: 68px;
     }
     .key-digit {
-      font-size: 1.45rem;
+      font-size: 1.5rem;
     }
   }
 </style>

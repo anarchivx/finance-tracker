@@ -1,5 +1,6 @@
 <script>
   import Navbar from "$lib/components/Navbar.svelte";
+  import DashboardCockpit from "$lib/components/DashboardCockpit.svelte";
   import BalanceCard from "$lib/components/BalanceCard.svelte";
   import AiSmartInput from "$lib/components/AiSmartInput.svelte";
   import AiAdvisor from "$lib/components/AiAdvisor.svelte";
@@ -9,6 +10,12 @@
   import GoalsSection from "$lib/components/GoalsSection.svelte";
   import TransactionList from "$lib/components/TransactionList.svelte";
   import TransactionModal from "$lib/components/TransactionModal.svelte";
+  import MultiWallet from "$lib/components/MultiWallet.svelte";
+  import SubscriptionsSection from "$lib/components/SubscriptionsSection.svelte";
+  import DebtTrackerSection from "$lib/components/DebtTrackerSection.svelte";
+  import ReceiptScanner from "$lib/components/ReceiptScanner.svelte";
+  import SplitBill from "$lib/components/SplitBill.svelte";
+  import ExecutiveReport from "$lib/components/ExecutiveReport.svelte";
   import SecurityLock from "$lib/components/SecurityLock.svelte";
   import ConfirmModal from "$lib/components/ConfirmModal.svelte";
   import SplashScreen from "$lib/components/SplashScreen.svelte";
@@ -96,29 +103,29 @@
   <main class="dashboard-body">
     <!-- View Switcher based on $activeTab -->
     {#if $activeTab === "dashboard"}
-      <!-- Hero Balance -->
-      <BalanceCard onQuickAdd={(type) => openModal(type)} />
-
-      <!-- Finora AI Smart Input & 1-Click Simulator -->
-      <AiSmartInput />
-
-      <!-- Analytics & Charts -->
-      <AnalyticsCharts />
-
-      <!-- Finora AI Copilot & Financial Advisor -->
-      <AiAdvisor />
-
-      <!-- Budgets Preview & Goals Preview Grid -->
-      <div class="two-col-grid">
-        <BudgetSection />
-        <GoalsSection />
-      </div>
-
-      <!-- Auto Daily Breakdown -->
-      <DailyBreakdown onEditTransaction={handleEditTransaction} />
-
-      <!-- Transaction List with Search & Export -->
-      <TransactionList onEditTransaction={handleEditTransaction} />
+      <!-- Executive Cockpit Dashboard (Fast, Clean & Non-Cluttered) -->
+      <DashboardCockpit
+        onQuickAdd={(type) => openModal(type)}
+        onEditTransaction={handleEditTransaction}
+      />
+    {:else if $activeTab === "scanner"}
+      <!-- Dedicated Smart Receipt Scanner Hub -->
+      <ReceiptScanner />
+    {:else if $activeTab === "splitbill"}
+      <!-- Dedicated Split Bill Hub -->
+      <SplitBill />
+    {:else if $activeTab === "wallets"}
+      <!-- Dedicated Multi-Wallet Hub -->
+      <MultiWallet />
+    {:else if $activeTab === "subscriptions"}
+      <!-- Dedicated Subscriptions & Recurring Bills Hub -->
+      <SubscriptionsSection />
+    {:else if $activeTab === "debts"}
+      <!-- Dedicated Debt & Loans Tracker Hub -->
+      <DebtTrackerSection />
+    {:else if $activeTab === "report"}
+      <!-- Dedicated Executive Financial Report & Wrapped Hub -->
+      <ExecutiveReport />
     {:else if $activeTab === "ai"}
       <!-- Dedicated Full AI Workspace -->
       <AiSmartInput />
@@ -216,6 +223,78 @@
         </div>
 
         <div class="sheet-grid">
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "scanner"}
+            on:click={() => handleSelectTab("scanner")}
+          >
+            <div class="tile-icon scan-gradient">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <span class="tile-label">Scan Struk</span>
+            <span class="tile-desc">OCR Nota AI</span>
+          </button>
+
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "splitbill"}
+            on:click={() => handleSelectTab("splitbill")}
+          >
+            <div class="tile-icon split-gradient">
+              <i class="fa-solid fa-users-viewfinder"></i>
+            </div>
+            <span class="tile-label">Split Bill</span>
+            <span class="tile-desc">Patungan Makan</span>
+          </button>
+
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "report"}
+            on:click={() => handleSelectTab("report")}
+          >
+            <div class="tile-icon report-gradient">
+              <i class="fa-solid fa-file-invoice-dollar"></i>
+            </div>
+            <span class="tile-label">Laporan PDF</span>
+            <span class="tile-desc">Cetak & Wrapped</span>
+          </button>
+
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "wallets"}
+            on:click={() => handleSelectTab("wallets")}
+          >
+            <div class="tile-icon wallet-gradient">
+              <i class="fa-solid fa-credit-card"></i>
+            </div>
+            <span class="tile-label">Rekening</span>
+            <span class="tile-desc">Multi-Dompet</span>
+          </button>
+
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "subscriptions"}
+            on:click={() => handleSelectTab("subscriptions")}
+          >
+            <div class="tile-icon sub-gradient">
+              <i class="fa-solid fa-repeat"></i>
+            </div>
+            <span class="tile-label">Langganan</span>
+            <span class="tile-desc">Tagihan Rutin</span>
+          </button>
+
+          <button
+            class="sheet-tile"
+            class:active={$activeTab === "debts"}
+            on:click={() => handleSelectTab("debts")}
+          >
+            <div class="tile-icon debt-gradient">
+              <i class="fa-solid fa-handshake-angle"></i>
+            </div>
+            <span class="tile-label">Hutang</span>
+            <span class="tile-desc">Piutang Teman</span>
+          </button>
+
           <button
             class="sheet-tile"
             class:active={$activeTab === "ai"}
@@ -583,6 +662,66 @@
     justify-content: center;
     font-size: 1.25rem;
     margin-bottom: 8px;
+  }
+
+  .scan-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(168, 85, 247, 0.25) 0%,
+      rgba(236, 72, 153, 0.25) 100%
+    );
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+  }
+
+  .split-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(6, 182, 212, 0.25) 0%,
+      rgba(16, 185, 129, 0.25) 100%
+    );
+    color: #34d399;
+    border: 1px solid rgba(6, 182, 212, 0.4);
+  }
+
+  .report-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(14, 165, 233, 0.25) 0%,
+      rgba(2, 132, 199, 0.25) 100%
+    );
+    color: #38bdf8;
+    border: 1px solid rgba(14, 165, 233, 0.4);
+  }
+
+  .wallet-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(37, 99, 235, 0.25) 0%,
+      rgba(59, 130, 246, 0.25) 100%
+    );
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+  }
+
+  .sub-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(236, 72, 153, 0.25) 0%,
+      rgba(217, 70, 239, 0.25) 100%
+    );
+    color: #f472b6;
+    border: 1px solid rgba(236, 72, 153, 0.4);
+  }
+
+  .debt-gradient {
+    background: linear-gradient(
+      135deg,
+      rgba(6, 182, 212, 0.25) 0%,
+      rgba(14, 165, 233, 0.25) 100%
+    );
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.4);
   }
 
   .ai-gradient {

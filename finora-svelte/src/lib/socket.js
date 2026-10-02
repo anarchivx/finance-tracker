@@ -1,55 +1,268 @@
 import { browser } from '$app/environment';
-import { transactions, budgets, goals, syncStatus, lastSyncTime } from './stores.js';
+import { transactions, budgets, goals, wallets, syncStatus, lastSyncTime } from './stores.js';
+import {
+  cloudAddTransaction,
+  cloudUpdateTransaction,
+  cloudDeleteTransaction
+} from './supabaseSync.js';
 
-// Local-first Engine (100% offline-ready, no network errors, instant UI updates)
+let socket = null;
+
+function getServerUrl() {
+  if (!browser) return '';
+  // In local Vite dev mode (port 5173), target backend at port 3001
+  if (window.location.port === '5173') {
+    return 'http://localhost:3001';
+  }
+  // In cloud deployment (single host), target same origin
+  return window.location.origin;
+}
+
+/**
+ * Initialize Realtime Cloud & Local Engine
+ */
 export function initSocket() {
   if (!browser) return null;
-  syncStatus.set('local');
-  lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-  return null;
+  if (socket) return socket;
+
+  const targetUrl = getServerUrl();
+  syncStatus.set('connecting');
+
+  // 1. Initial Pull from Backend SQLite Database
+  fetch(`${targetUrl}/api/sync`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then((data) => {
+      if (data && data.transactions && data.transactions.length > 0) {
+        transactions.set(data.transactions);
+      }
+      if (data && data.budgets && data.budgets.length > 0) {
+        budgets.set(data.budgets);
+      }
+      if (data && data.goals && data.goals.length > 0) {
+        goals.set(data.goals);
+      }
+      syncStatus.set('connected');
+      lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+    })
+    .catch((err) => {
+      console.warn('[Sync] Server sync fallback to local store:', err.message);
+      syncStatus.set('local');
+      lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+    });
+
+  // 2. Setup Socket.IO Realtime Connection
+  try {
+    const ioClient = typeof window !== 'undefined' && window.io ? window.io : null;
+    if (ioClient) {
+      socket = ioClient(targetUrl, {
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1500,
+        timeout: 8000
+      });
+
+      socket.on('connect', () => {
+        syncStatus.set('connected');
+        lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+      });
+
+      socket.on('disconnect', () => {
+        syncStatus.set('offline');
+      });
+
+      // Realtime Event Listeners
+      socket.on('transaction:created', (newTx) => {
+        transactions.update((list) => {
+          if (list.some((t) => String(t.id) === String(newTx.id))) return list;
+          return [newTx, ...list];
+        });
+        lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+      });
+
+      socket.on('transaction:updated', (updatedTx) => {
+        transactions.update((list) =>
+          list.map((t) => (String(t.id) === String(updatedTx.id) ? { ...t, ...updatedTx } : t))
+        );
+        lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+      });
+
+      socket.on('transaction:deleted', (delId) => {
+        transactions.update((list) => list.filter((t) => String(t.id) !== String(delId)));
+        lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+      });
+
+      socket.on('budget:updated', (budget) => {
+        budgets.update((list) => {
+          const idx = list.findIndex((b) => b.category.toLowerCase() === budget.category.toLowerCase());
+          if (idx >= 0) {
+            list[idx] = budget;
+            return [...list];
+          }
+          return [...list, budget];
+        });
+        lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+      });
+
+      socket.on('goal:updated', (goal) => {
+        goals.update((list) => {
+          const idx = list.findIndex((g) => String(g.id) === String(goal.id));
+          if (idx >= 0) {
+            list[idx] = goal;
+            return [...list];
+          }
+          return [...list, goal];
+        });
+        lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+      });
+    }
+  } catch (e) {
+    console.warn('[Socket.IO] Error initializing socket:', e);
+  }
+
+  return socket;
 }
 
 export function getSocket() {
-  return null;
+  return socket;
 }
 
 // ==========================================================================
-// PURE LOCAL TRANSACTIONS HANDLERS
+// TRANSACTIONS HANDLERS
 // ==========================================================================
 
 export function emitAddTransaction(tx) {
   return new Promise((resolve) => {
+    let targetWalletId = tx.walletId;
+
+    // Auto-update wallet balance
+    wallets.update((wList) => {
+      if (!targetWalletId && wList.length > 0) {
+        targetWalletId = wList[0].id;
+      }
+      if (!targetWalletId) return wList;
+
+      const amt = Number(tx.amount) || 0;
+      return wList.map((w) => {
+        if (w.id === targetWalletId) {
+          const bal = Number(w.balance) || 0;
+          return {
+            ...w,
+            balance: tx.type === 'income' ? bal + amt : Math.max(0, bal - amt)
+          };
+        }
+        return w;
+      });
+    });
+
     const localTx = {
       ...tx,
       id: tx.id || `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      walletId: targetWalletId || tx.walletId || '',
       created_at: tx.created_at || new Date().toISOString()
     };
+
+    // Optimistic local update
     transactions.update((list) => [localTx, ...list]);
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, data: localTx, local: true });
+
+    // Emit via Socket.IO if connected
+    if (socket && socket.connected) {
+      socket.emit('transaction:add', localTx, (res) => resolve(res));
+    } else {
+      resolve({ success: true, data: localTx, local: true });
+    }
+
+    // Sync to Supabase Cloud if connected
+    cloudAddTransaction(localTx);
+
+    // Background REST call to persist in SQLite server
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/transactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(localTx)
+    }).catch(() => {});
   });
 }
 
 export function emitDeleteTransaction(id) {
   return new Promise((resolve) => {
-    transactions.update((list) => list.filter((t) => String(t.id) !== String(id)));
+    transactions.update((list) => {
+      const target = list.find((t) => String(t.id) === String(id));
+      if (target && target.walletId) {
+        const amt = Number(target.amount) || 0;
+        wallets.update((wList) =>
+          wList.map((w) => {
+            if (w.id === target.walletId) {
+              const bal = Number(w.balance) || 0;
+              return {
+                ...w,
+                balance: target.type === 'income' ? Math.max(0, bal - amt) : bal + amt
+              };
+            }
+            return w;
+          })
+        );
+      }
+      return list.filter((t) => String(t.id) !== String(id));
+    });
+
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, id, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('transaction:remove', id, (res) => resolve(res));
+    } else {
+      resolve({ success: true, id, local: true });
+    }
+
+    // Sync deletion to Supabase Cloud
+    cloudDeleteTransaction(id);
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/transactions/${id}`, { method: 'DELETE' }).catch(() => {});
   });
 }
 
-export function emitUpdateTransaction(id, txData) {
+export function emitUpdateTransaction(idOrTx, maybeTxData) {
   return new Promise((resolve) => {
+    let id = idOrTx;
+    let updateData = maybeTxData;
+
+    if (typeof idOrTx === 'object' && idOrTx !== null) {
+      id = idOrTx.id;
+      updateData = idOrTx;
+    }
+
     transactions.update((list) => {
       const idx = list.findIndex((t) => String(t.id) === String(id));
       if (idx >= 0) {
-        list[idx] = { ...list[idx], ...txData, updated_at: new Date().toISOString() };
+        const oldTx = list[idx];
+        const newTx = { ...oldTx, ...updateData, updated_at: new Date().toISOString() };
+        list[idx] = newTx;
         return [...list];
       }
       return list;
     });
+
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, id, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('transaction:update', { id, txData: updateData }, (res) => resolve(res));
+    } else {
+      resolve({ success: true, id, local: true });
+    }
+
+    // Sync update to Supabase Cloud
+    cloudUpdateTransaction(id, updateData);
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateData)
+    }).catch(() => {});
   });
 }
 
@@ -63,12 +276,19 @@ export function emitResetTransactions() {
     ];
     transactions.set(defaultInit);
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+
+    if (socket && socket.connected) {
+      socket.emit('transaction:reset', (res) => resolve(res));
+    }
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/transactions/reset`, { method: 'POST' }).catch(() => {});
     resolve({ success: true, data: defaultInit, local: true });
   });
 }
 
 // ==========================================================================
-// PURE LOCAL BUDGETS HANDLERS
+// BUDGETS & GOALS HANDLERS
 // ==========================================================================
 
 export function emitUpdateBudget(category, limit) {
@@ -92,7 +312,19 @@ export function emitUpdateBudget(category, limit) {
     });
 
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('budget:update', { category: trimmedCat, limit: numLimit }, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
+    }
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/budgets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: trimmedCat, limit: numLimit })
+    }).catch(() => {});
   });
 }
 
@@ -101,13 +333,17 @@ export function emitDeleteBudget(category) {
     const trimmedCat = (category || '').trim();
     budgets.update((list) => list.filter((b) => b.category.toLowerCase().trim() !== trimmedCat.toLowerCase()));
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('budget:remove', trimmedCat, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
+    }
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/budgets/${encodeURIComponent(trimmedCat)}`, { method: 'DELETE' }).catch(() => {});
   });
 }
-
-// ==========================================================================
-// PURE LOCAL GOALS HANDLERS
-// ==========================================================================
 
 export function emitDepositGoal(id, amount) {
   return new Promise((resolve) => {
@@ -117,7 +353,19 @@ export function emitDepositGoal(id, amount) {
       return [...list];
     });
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('goal:deposit', { id, amount: Number(amount) }, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
+    }
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/goals/${id}/deposit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: Number(amount) })
+    }).catch(() => {});
   });
 }
 
@@ -126,7 +374,19 @@ export function emitAddGoal(goalData) {
     const newG = { ...goalData, id: `g-${Date.now()}` };
     goals.update((list) => [...list, newG]);
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, data: newG, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('goal:add', newG, (res) => resolve(res));
+    } else {
+      resolve({ success: true, data: newG, local: true });
+    }
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/goals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newG)
+    }).catch(() => {});
   });
 }
 
@@ -141,7 +401,19 @@ export function emitUpdateGoal(id, goalData) {
       return list;
     });
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('goal:update', { id, goalData }, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
+    }
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/goals/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(goalData)
+    }).catch(() => {});
   });
 }
 
@@ -149,6 +421,14 @@ export function emitDeleteGoal(id) {
   return new Promise((resolve) => {
     goals.update((list) => list.filter((g) => String(g.id) !== String(id)));
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
-    resolve({ success: true, local: true });
+
+    if (socket && socket.connected) {
+      socket.emit('goal:remove', id, (res) => resolve(res));
+    } else {
+      resolve({ success: true, local: true });
+    }
+
+    const targetUrl = getServerUrl();
+    fetch(`${targetUrl}/api/goals/${id}`, { method: 'DELETE' }).catch(() => {});
   });
 }

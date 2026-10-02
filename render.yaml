@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: finora
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.0.0

@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { theme } from '$lib/stores.js';
+  import { initSupabaseSync } from '$lib/supabaseSync.js';
 
   let deferredPrompt = null;
   let showInstallBanner = false;
@@ -20,6 +21,11 @@
   }
 
   onMount(() => {
+    // Auto-connect to Supabase Cloud if credentials exist (env var or localStorage)
+    if (browser) {
+      initSupabaseSync();
+    }
+
     // Capture PWA installation prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();

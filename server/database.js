@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, 'finora.db');
@@ -35,6 +36,12 @@ db.exec(`
     current_amount REAL DEFAULT 0,
     deadline TEXT,
     icon TEXT DEFAULT '🎯',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS app_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
@@ -214,3 +221,39 @@ export const deleteGoal = (id) => {
   db.prepare('DELETE FROM goals WHERE id = ?').run(id);
   return { success: true, id };
 };
+
+// ==============================================================================
+// SERVER-SIDE SECURITY PIN (SINGLE-MASTER PIN FOR ALL DEVICES)
+// ==============================================================================
+
+function hashPin(pin) {
+  return crypto.createHash('sha256').update(`finora_cloud_salt_${pin}`).digest('hex');
+}
+
+export function hasSecurityPin() {
+  const row = db.prepare("SELECT value FROM app_config WHERE key = 'security_pin'").get();
+  return !!row;
+}
+
+export function verifySecurityPin(pin) {
+  const row = db.prepare("SELECT value FROM app_config WHERE key = 'security_pin'").get();
+  if (!row) return false;
+  return row.value === hashPin(pin);
+}
+
+export function setSecurityPin(newPin) {
+  const hashed = hashPin(newPin);
+  const stmt = db.prepare(`
+    INSERT INTO app_config (key, value, updated_at) 
+    VALUES ('security_pin', ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+  `);
+  stmt.run(hashed);
+  return true;
+}
+
+export function resetSecurityPin() {
+  db.prepare("DELETE FROM app_config WHERE key = 'security_pin'").run();
+  return true;
+}
+

@@ -53,7 +53,10 @@
     'Gaji': { icon: 'fa-money-bill-wave', color: '#10b981' },
     'Investasi': { icon: 'fa-chart-line', color: '#06b6d4' },
     'Freelance & Bisnis': { icon: 'fa-laptop-code', color: '#6366f1' },
-    'Bonus & Hadiah': { icon: 'fa-gift', color: '#f59e0b' }
+    'Bonus & Hadiah': { icon: 'fa-gift', color: '#f59e0b' },
+    'Pelunasan Piutang': { icon: 'fa-handshake-angle', color: '#10b981' },
+    'Pembayaran Hutang': { icon: 'fa-handshake', color: '#0ea5e9' },
+    'Transfer Saldo': { icon: 'fa-arrow-right-arrow-left', color: '#8b5cf6' }
   };
 
   function getMeta(cat) {

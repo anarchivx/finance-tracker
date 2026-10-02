@@ -23,6 +23,26 @@ const initialGoals = [
   { id: 'g3', name: 'Gadget Baru / Laptop', target_amount: 18000000, current_amount: 9000000, deadline: '2026-10-15', icon: '💻' }
 ];
 
+const initialWallets = [
+  { id: 'w1', name: 'BCA Utama', type: 'bank', balance: 8450000, accountNumber: '8830-1928-44', gradient: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', icon: 'fa-building-columns', badge: 'Debit Platinum' },
+  { id: 'w2', name: 'GoPay & QRIS', type: 'ewallet', balance: 750000, accountNumber: '0812-3456-7890', gradient: 'linear-gradient(135deg, #065f46 0%, #10b981 100%)', icon: 'fa-wallet', badge: 'GoPay Plus' },
+  { id: 'w3', name: 'ShopeePay', type: 'ewallet', balance: 320000, accountNumber: '0812-3456-7890', gradient: 'linear-gradient(135deg, #c2410c 0%, #f97316 100%)', icon: 'fa-bag-shopping', badge: 'SPay Verified' },
+  { id: 'w4', name: 'Dompet Tunai', type: 'cash', balance: 480000, accountNumber: 'Uang Saku', gradient: 'linear-gradient(135deg, #854d0e 0%, #eab308 100%)', icon: 'fa-money-bill-wave', badge: 'Tunai Fisik' }
+];
+
+const initialSubscriptions = [
+  { id: 's1', name: 'Netflix Premium 4K', amount: 186000, cycle: 'monthly', billingDay: 25, category: 'Hiburan', walletId: 'w1', icon: 'fa-film', color: '#E50914', nextDue: '2026-09-25', isPaidThisMonth: false },
+  { id: 's2', name: 'Spotify Duo', amount: 86900, cycle: 'monthly', billingDay: 18, category: 'Hiburan', walletId: 'w2', icon: 'fa-music', color: '#1DB954', nextDue: '2026-09-18', isPaidThisMonth: false },
+  { id: 's3', name: 'Indihome Fiber 100M', amount: 420000, cycle: 'monthly', billingDay: 20, category: 'Tagihan & Utilitas', walletId: 'w1', icon: 'fa-wifi', color: '#E11D48', nextDue: '2026-09-20', isPaidThisMonth: false },
+  { id: 's4', name: 'BPJS Kesehatan Mandiri', amount: 150000, cycle: 'monthly', billingDay: 10, category: 'Kesehatan', walletId: 'w1', icon: 'fa-heart-pulse', color: '#059669', nextDue: '2026-10-10', isPaidThisMonth: true }
+];
+
+const initialDebts = [
+  { id: 'd1', personName: 'Budi Santoso', type: 'receivable', amount: 500000, paidAmount: 200000, dueDate: '2026-09-30', phone: '081298765432', note: 'Pinjaman sewa kamera freelance', status: 'partial' },
+  { id: 'd2', personName: 'Rian Pratama', type: 'receivable', amount: 150000, paidAmount: 0, dueDate: '2026-09-22', phone: '085712345678', note: 'Split bill makan sushi', status: 'unpaid' },
+  { id: 'd3', personName: 'Cicilan Gadget (Toko Prima)', type: 'payable', amount: 3500000, paidAmount: 1500000, dueDate: '2026-10-05', phone: '081345678901', note: 'Sisa cicilan 2 bulan lagi', status: 'partial' }
+];
+
 // Helper to create persistent store with localStorage fallback
 function createPersistentStore(key, initial) {
   let startValue = initial;
@@ -52,9 +72,12 @@ function createPersistentStore(key, initial) {
 export const transactions = createPersistentStore('finora_transactions', initialTransactions);
 export const budgets = createPersistentStore('finora_budgets', initialBudgets);
 export const goals = createPersistentStore('finora_goals', initialGoals);
+export const wallets = createPersistentStore('finora_wallets', initialWallets);
+export const subscriptions = createPersistentStore('finora_subscriptions', initialSubscriptions);
+export const debts = createPersistentStore('finora_debts', initialDebts);
 export const currency = createPersistentStore('finora_currency', 'IDR'); // IDR, USD, EUR
 export const theme = createPersistentStore('finora_theme', 'dark'); // 'dark' or 'light'
-export const activeTab = writable('dashboard'); // dashboard, transactions, budgets, goals, analytics
+export const activeTab = writable('dashboard'); // dashboard, transactions, budgets, goals, wallets, subscriptions, debts, ai, breakdown
 export const syncStatus = writable('offline'); // connected, connecting, offline
 export const lastSyncTime = writable('');
 export const isPrivacyMode = writable(false); // hides balance numbers if true
@@ -160,3 +183,275 @@ export function requestConfirm({
 export function closeConfirm() {
   confirmDialog.update((d) => ({ ...d, isOpen: false, onConfirm: null }));
 }
+
+// Wallet Metrics Derived Store
+export const walletMetrics = derived(wallets, ($w) => {
+  const totalBalance = ($w || []).reduce((acc, w) => acc + (Number(w.balance) || 0), 0);
+  return {
+    totalBalance,
+    count: ($w || []).length
+  };
+});
+
+// Subscription Metrics Derived Store
+export const subscriptionMetrics = derived(subscriptions, ($subs) => {
+  const list = $subs || [];
+  let monthlyTotal = 0;
+  let unpaidCount = 0;
+  const now = new Date();
+  const currentDay = now.getDate();
+
+  list.forEach((sub) => {
+    const amt = Number(sub.amount) || 0;
+    if (sub.cycle === 'yearly') {
+      monthlyTotal += Math.round(amt / 12);
+    } else {
+      monthlyTotal += amt;
+    }
+    if (!sub.isPaidThisMonth) {
+      unpaidCount++;
+    }
+  });
+
+  return {
+    monthlyTotal,
+    unpaidCount,
+    totalCount: list.length
+  };
+});
+
+// Debt / Loan Metrics Derived Store
+export const debtMetrics = derived(debts, ($debts) => {
+  const list = $debts || [];
+  let totalReceivable = 0;
+  let remainingReceivable = 0;
+  let totalPayable = 0;
+  let remainingPayable = 0;
+
+  list.forEach((d) => {
+    const total = Number(d.amount) || 0;
+    const paid = Number(d.paidAmount) || 0;
+    const rem = Math.max(0, total - paid);
+
+    if (d.type === 'receivable') {
+      totalReceivable += total;
+      remainingReceivable += rem;
+    } else {
+      totalPayable += total;
+      remainingPayable += rem;
+    }
+  });
+
+  return {
+    totalReceivable,
+    remainingReceivable,
+    totalPayable,
+    remainingPayable
+  };
+});
+
+// Wallet Operations
+export function transferFunds({ fromId, toId, amount, note = '' }) {
+  const amt = Number(amount) || 0;
+  if (amt <= 0 || fromId === toId) return false;
+
+  let sourceWalletName = '';
+  let targetWalletName = '';
+
+  wallets.update((list) => {
+    return list.map((w) => {
+      if (w.id === fromId) {
+        sourceWalletName = w.name;
+        return { ...w, balance: Math.max(0, (Number(w.balance) || 0) - amt) };
+      }
+      if (w.id === toId) {
+        targetWalletName = w.name;
+        return { ...w, balance: (Number(w.balance) || 0) + amt };
+      }
+      return w;
+    });
+  });
+
+  // Automatically record a transfer transaction
+  const transferTx = {
+    id: `tx-tf-${Date.now()}`,
+    description: `Transfer: ${sourceWalletName} ➔ ${targetWalletName}`,
+    amount: amt,
+    category: 'Transfer Saldo',
+    type: 'expense',
+    payment_method: 'Transfer',
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().slice(0, 5),
+    notes: note || `Pemindahan dana internal dompet`
+  };
+  transactions.update((txs) => [transferTx, ...txs]);
+
+  return true;
+}
+
+export function addWallet(wallet) {
+  const newW = {
+    ...wallet,
+    id: wallet.id || `w-${Date.now()}`,
+    balance: Number(wallet.balance) || 0
+  };
+  wallets.update((list) => [...list, newW]);
+  return newW;
+}
+
+export function updateWallet(id, data) {
+  wallets.update((list) =>
+    list.map((w) => (w.id === id ? { ...w, ...data, balance: Number(data.balance ?? w.balance) } : w))
+  );
+}
+
+export function deleteWallet(id) {
+  wallets.update((list) => list.filter((w) => w.id !== id));
+}
+
+// Subscription Operations
+export function addSubscription(sub) {
+  const newSub = {
+    ...sub,
+    id: sub.id || `sub-${Date.now()}`,
+    amount: Number(sub.amount) || 0,
+    isPaidThisMonth: false
+  };
+  subscriptions.update((list) => [...list, newSub]);
+  return newSub;
+}
+
+export function updateSubscription(id, subData) {
+  subscriptions.update((list) =>
+    list.map((s) => (s.id === id ? { ...s, ...subData, amount: Number(subData.amount ?? s.amount) } : s))
+  );
+}
+
+export function deleteSubscription(id) {
+  subscriptions.update((list) => list.filter((s) => s.id !== id));
+}
+
+export function paySubscription(id, chosenWalletId = null) {
+  let paidSub = null;
+  subscriptions.update((list) =>
+    list.map((s) => {
+      if (s.id === id) {
+        paidSub = { ...s, isPaidThisMonth: true };
+        return paidSub;
+      }
+      return s;
+    })
+  );
+
+  if (paidSub) {
+    const targetWalletId = chosenWalletId || paidSub.walletId;
+    if (targetWalletId) {
+      wallets.update((wList) =>
+        wList.map((w) =>
+          w.id === targetWalletId
+            ? { ...w, balance: Math.max(0, (Number(w.balance) || 0) - paidSub.amount) }
+            : w
+        )
+      );
+    }
+
+    // Log as an expense transaction
+    const subTx = {
+      id: `tx-sub-${Date.now()}`,
+      description: `Langganan: ${paidSub.name}`,
+      amount: paidSub.amount,
+      category: paidSub.category || 'Tagihan & Utilitas',
+      type: 'expense',
+      payment_method: 'Auto-Debit',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toTimeString().slice(0, 5),
+      notes: `Pembayaran langganan ${paidSub.name} siklus ${paidSub.cycle === 'yearly' ? 'Tahunan' : 'Bulanan'}`
+    };
+    transactions.update((txs) => [subTx, ...txs]);
+  }
+}
+
+// Debt Operations
+export function addDebt(debt) {
+  const newD = {
+    ...debt,
+    id: debt.id || `debt-${Date.now()}`,
+    amount: Number(debt.amount) || 0,
+    paidAmount: Number(debt.paidAmount) || 0,
+    status: (Number(debt.paidAmount) || 0) >= (Number(debt.amount) || 0) ? 'paid' : (Number(debt.paidAmount) || 0) > 0 ? 'partial' : 'unpaid'
+  };
+  debts.update((list) => [...list, newD]);
+  return newD;
+}
+
+export function updateDebt(id, debtData) {
+  debts.update((list) =>
+    list.map((d) => {
+      if (d.id === id) {
+        const amt = Number(debtData.amount ?? d.amount);
+        const paid = Number(debtData.paidAmount ?? d.paidAmount);
+        const st = paid >= amt ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+        return { ...d, ...debtData, amount: amt, paidAmount: paid, status: st };
+      }
+      return d;
+    })
+  );
+}
+
+export function deleteDebt(id) {
+  debts.update((list) => list.filter((d) => d.id !== id));
+}
+
+export function recordDebtPayment(id, paymentAmount, walletId = null) {
+  const payAmt = Number(paymentAmount) || 0;
+  if (payAmt <= 0) return;
+
+  let updatedD = null;
+  debts.update((list) =>
+    list.map((d) => {
+      if (d.id === id) {
+        const newPaid = (Number(d.paidAmount) || 0) + payAmt;
+        const st = newPaid >= (Number(d.amount) || 0) ? 'paid' : 'partial';
+        updatedD = { ...d, paidAmount: newPaid, status: st };
+        return updatedD;
+      }
+      return d;
+    })
+  );
+
+  if (updatedD) {
+    // If it's a receivable (someone repaid us), our wallet balance increases (income)
+    // If it's a payable (we paid back), our wallet balance decreases (expense)
+    const isReceivable = updatedD.type === 'receivable';
+
+    if (walletId) {
+      wallets.update((wList) =>
+        wList.map((w) => {
+          if (w.id === walletId) {
+            const currentBal = Number(w.balance) || 0;
+            const newBal = isReceivable ? currentBal + payAmt : Math.max(0, currentBal - payAmt);
+            return { ...w, balance: newBal };
+          }
+          return w;
+        })
+      );
+    }
+
+    const debtTx = {
+      id: `tx-debt-${Date.now()}`,
+      description: isReceivable
+        ? `Pelunasan Piutang: ${updatedD.personName}`
+        : `Pembayaran Hutang ke: ${updatedD.personName}`,
+      amount: payAmt,
+      category: isReceivable ? 'Pelunasan Piutang' : 'Pembayaran Hutang',
+      type: isReceivable ? 'income' : 'expense',
+      payment_method: 'Transfer',
+      walletId: walletId || '',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toTimeString().slice(0, 5),
+      notes: `${updatedD.note ? updatedD.note + ' - ' : ''}Cicilan/Pelunasan (Sisa: Rp ${Math.max(0, updatedD.amount - updatedD.paidAmount).toLocaleString('id-ID')})`
+    };
+    transactions.update((txs) => [debtTx, ...txs]);
+  }
+}
+

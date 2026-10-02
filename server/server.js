@@ -2,6 +2,14 @@ import express from 'express';
 import http from 'node:http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const svelteDist = path.join(__dirname, '../finora-svelte/build');
+const legacyDist = path.join(__dirname, '../');
 import {
   getDatabaseData,
   addTransaction,
@@ -13,7 +21,11 @@ import {
   updateGoalDeposit,
   addGoal,
   updateGoal,
-  deleteGoal
+  deleteGoal,
+  hasSecurityPin,
+  verifySecurityPin,
+  setSecurityPin,
+  resetSecurityPin
 } from './database.js';
 
 const app = express();
@@ -28,6 +40,61 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+
+// ==============================================================================
+// PIN SECURITY ENDPOINTS (SINGLE MASTER PIN FOR ALL DEVICES)
+// ==============================================================================
+
+app.get('/api/auth/status', (req, res) => {
+  try {
+    const hasPin = hasSecurityPin();
+    res.json({ hasPin });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/verify', (req, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin) return res.status(400).json({ success: false, error: 'PIN wajib diisi' });
+    const isValid = verifySecurityPin(String(pin));
+    res.json({ success: isValid });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/set-pin', (req, res) => {
+  try {
+    const { newPin, currentPin } = req.body;
+    if (!newPin || String(newPin).length < 4) {
+      return res.status(400).json({ success: false, error: 'PIN minimal 4 digit' });
+    }
+
+    const exists = hasSecurityPin();
+    if (exists) {
+      if (!currentPin || !verifySecurityPin(String(currentPin))) {
+        return res.status(403).json({ success: false, error: 'PIN lama salah' });
+      }
+    }
+
+    setSecurityPin(String(newPin));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/reset', (req, res) => {
+  try {
+    resetSecurityPin();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // REST API Endpoints
 app.get('/api/sync', (req, res) => {
@@ -268,7 +335,20 @@ io.on('connection', (socket) => {
   });
 });
 
+// Serve frontend static build directly
+if (fs.existsSync(svelteDist)) {
+  app.use(express.static(svelteDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+      return next();
+    }
+    res.sendFile(path.join(svelteDist, 'index.html'));
+  });
+} else {
+  app.use(express.static(legacyDist));
+}
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`🚀 Finora Real-time Backend running at http://localhost:${PORT}`);
+  console.log(`🚀 Finora Fullstack App running at http://localhost:${PORT}`);
 });

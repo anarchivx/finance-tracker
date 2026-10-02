@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm --prefix finora-svelte install && npm --prefix finora-svelte run build",
+  "outputDirectory": "finora-svelte/build",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
