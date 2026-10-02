@@ -313,19 +313,25 @@
           {#if selectedWalletId === 'all'}
             <div class="wallet-asset-mix-row">
               <div class="asset-mix-pill" title="Total Saldo di Seluruh Rekening Bank">
-                <i class="fa-solid fa-building-columns icon-blue"></i>
-                <span class="mix-label">Bank:</span>
-                <strong>{$isPrivacyMode ? '••••' : formatCurrency(bankTotal, $currency)}</strong>
+                <div class="mix-header">
+                  <i class="fa-solid fa-building-columns icon-blue"></i>
+                  <span class="mix-label">Bank</span>
+                </div>
+                <strong class="mix-val">{$isPrivacyMode ? '••••' : formatCurrency(bankTotal, $currency)}</strong>
               </div>
               <div class="asset-mix-pill" title="Total Saldo di E-Wallet & QRIS">
-                <i class="fa-solid fa-wallet icon-emerald"></i>
-                <span class="mix-label">E-Wallet:</span>
-                <strong>{$isPrivacyMode ? '••••' : formatCurrency(ewalletTotal, $currency)}</strong>
+                <div class="mix-header">
+                  <i class="fa-solid fa-wallet icon-emerald"></i>
+                  <span class="mix-label">E-Wallet</span>
+                </div>
+                <strong class="mix-val">{$isPrivacyMode ? '••••' : formatCurrency(ewalletTotal, $currency)}</strong>
               </div>
               <div class="asset-mix-pill" title="Uang Tunai Fisik">
-                <i class="fa-solid fa-money-bill-wave icon-amber"></i>
-                <span class="mix-label">Tunai:</span>
-                <strong>{$isPrivacyMode ? '••••' : formatCurrency(cashTotal, $currency)}</strong>
+                <div class="mix-header">
+                  <i class="fa-solid fa-money-bill-wave icon-amber"></i>
+                  <span class="mix-label">Tunai</span>
+                </div>
+                <strong class="mix-val">{$isPrivacyMode ? '••••' : formatCurrency(cashTotal, $currency)}</strong>
               </div>
             </div>
           {/if}
@@ -365,18 +371,21 @@
             </div>
           </div>
 
+          <!-- Indestructible 2-tier Action Buttons (Pemasukan & Pengeluaran 50/50, Transfer Full) -->
           <div class="card-cta-group">
-            <button class="cta-pill-btn income" on:click={() => onQuickAdd('income')}>
-              <div class="btn-icon-wrap"><i class="fa-solid fa-arrow-down"></i></div>
-              <span>Pemasukan</span>
-            </button>
-            <button class="cta-pill-btn expense" on:click={() => onQuickAdd('expense')}>
-              <div class="btn-icon-wrap"><i class="fa-solid fa-arrow-up"></i></div>
-              <span>Pengeluaran</span>
-            </button>
-            <button class="cta-pill-btn transfer" on:click={() => ($activeTab = 'wallets')}>
+            <div class="cta-primary-row">
+              <button class="cta-pill-btn income" on:click={() => onQuickAdd('income')}>
+                <div class="btn-icon-wrap"><i class="fa-solid fa-arrow-down"></i></div>
+                <span>Pemasukan</span>
+              </button>
+              <button class="cta-pill-btn expense" on:click={() => onQuickAdd('expense')}>
+                <div class="btn-icon-wrap"><i class="fa-solid fa-arrow-up"></i></div>
+                <span>Pengeluaran</span>
+              </button>
+            </div>
+            <button class="cta-pill-btn transfer full-width" on:click={() => ($activeTab = 'wallets')}>
               <div class="btn-icon-wrap"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
-              <span>Transfer</span>
+              <span>Transfer Antar Rekening & Dompet</span>
             </button>
           </div>
         </div>
@@ -418,7 +427,10 @@
         </svg>
 
         <div class="flow-card-footer">
-          <span class="flow-caption">Dari gaji, freelance & arus kas aktif</span>
+          <div class="flow-caption-block">
+            <span class="caption-label">Arus Kas</span>
+            <span class="caption-desc">Gaji, freelance & bisnis</span>
+          </div>
         </div>
       </div>
 
@@ -455,9 +467,10 @@
         </svg>
 
         <div class="flow-card-footer">
-          <span class="flow-caption">
-            Sisa Kuota Belanja: <strong>{$isPrivacyMode ? '••••••' : formatCurrency(budgetRemaining, $currency)}</strong>
-          </span>
+          <div class="flow-caption-block">
+            <span class="caption-label">Sisa Kuota Belanja</span>
+            <span class="caption-val">{$isPrivacyMode ? '••••••' : formatCurrency(budgetRemaining, $currency)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1347,30 +1360,47 @@
     transform: scale(1.05);
   }
 
-  /* Multi-Wallet Asset Mix Pills */
+  /* Multi-Wallet Asset Mix Pills (3-box Grid) */
   .wallet-asset-mix-row {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 0.65rem;
     margin-top: 0.85rem;
-    flex-wrap: wrap;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .asset-mix-pill {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 0.3rem 0.65rem;
-    border-radius: 8px;
-    font-size: 0.725rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 10px;
     display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    color: #cbd5e1 !important;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    overflow: hidden;
   }
 
-  .asset-mix-pill strong {
+  .mix-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: #94a3b8;
+  }
+
+  .mix-label {
+    font-weight: 600;
+  }
+
+  .mix-val {
     color: #ffffff !important;
     font-weight: 700;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .icon-blue { color: #38bdf8; }
@@ -1495,20 +1525,28 @@
 
   .card-cta-group {
     display: flex;
-    gap: 0.85rem;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .cta-primary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    width: 100%;
   }
 
   .cta-pill-btn {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    border-radius: 14px;
+    padding: 0.72rem 1rem;
+    border-radius: 13px;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.6rem;
+    gap: 0.55rem;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     border: none;
   }
@@ -1546,16 +1584,53 @@
     box-shadow: 0 8px 24px rgba(244, 63, 94, 0.45);
   }
 
-  .cta-pill-btn.transfer {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    color: #ffffff;
+  .cta-pill-btn.transfer.full-width {
+    width: 100%;
+    padding: 0.65rem 1rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #e2e8f0;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
   }
 
-  .cta-pill-btn.transfer:hover {
-    background: rgba(255, 255, 255, 0.18);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
+  .cta-pill-btn.transfer.full-width:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .flow-caption-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .caption-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+  }
+
+  .caption-amount,
+  .caption-val {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .caption-desc {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* ========================================================================= */
@@ -3133,18 +3208,39 @@
     }
 
     .wallet-asset-mix-row {
-      display: flex !important;
-      flex-wrap: wrap !important;
-      gap: 5px !important;
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 6px !important;
       margin-top: 10px !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
     }
 
     .asset-mix-pill {
-      flex: 1 1 auto !important;
-      padding: 5px 7px !important;
-      font-size: 0.66rem !important;
-      justify-content: space-between !important;
-      box-sizing: border-box !important;
+      display: flex !important;
+      flex-direction: column !important;
+      padding: 6px 6px !important;
+      border-radius: 10px !important;
+      gap: 2px !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+
+    .mix-header {
+      display: flex !important;
+      align-items: center !important;
+      gap: 3px !important;
+      font-size: 0.65rem !important;
+      color: #94a3b8 !important;
+    }
+
+    .mix-val {
+      font-size: 0.72rem !important;
+      font-weight: 700 !important;
+      color: #ffffff !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
     .card-embossed-details {
@@ -3167,27 +3263,40 @@
     }
 
     .card-cta-group {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 6px !important;
+      width: 100% !important;
+    }
+
+    .cta-primary-row {
       display: grid !important;
-      grid-template-columns: repeat(3, 1fr) !important;
+      grid-template-columns: 1fr 1fr !important;
       gap: 6px !important;
       width: 100% !important;
     }
 
     .cta-pill-btn {
-      padding: 8px 3px !important;
-      font-size: 0.72rem !important;
-      gap: 4px !important;
+      padding: 9px 4px !important;
+      font-size: 0.78rem !important;
+      gap: 5px !important;
       border-radius: 10px !important;
       justify-content: center !important;
-      white-space: nowrap !important;
     }
 
     .btn-icon-wrap {
       width: 18px !important;
       height: 18px !important;
-      font-size: 0.62rem !important;
+      font-size: 0.65rem !important;
       border-radius: 5px !important;
       flex-shrink: 0 !important;
+    }
+
+    .cta-pill-btn.transfer.full-width {
+      width: 100% !important;
+      padding: 8px 10px !important;
+      font-size: 0.75rem !important;
+      border-radius: 10px !important;
     }
 
     /* Income & Expense Telemetry Twin-Grid */
@@ -3235,14 +3344,15 @@
 
     /* Floating Quick Launcher 3x2 Grid */
     .launcher-dock-container {
-      margin-top: -0.25rem;
+      margin-top: 0.25rem !important;
+      padding-bottom: 24px !important;
     }
 
     .dock-glass-capsule {
       display: grid !important;
       grid-template-columns: repeat(3, 1fr) !important;
       gap: 8px !important;
-      padding: 12px 8px !important;
+      padding: 12px 6px !important;
       border-radius: 18px !important;
     }
 
@@ -3250,24 +3360,29 @@
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
-      padding: 8px 4px !important;
+      padding: 8px 2px !important;
       border-radius: 12px !important;
-      background: transparent !important;
+      background: rgba(255, 255, 255, 0.03) !important;
+      min-width: 0 !important;
     }
 
     .app-icon-squircle {
-      width: 42px !important;
-      height: 42px !important;
+      width: 44px !important;
+      height: 44px !important;
       font-size: 1.15rem !important;
-      margin-bottom: 5px !important;
-      border-radius: 12px !important;
+      margin-bottom: 6px !important;
+      border-radius: 13px !important;
     }
 
     .app-name {
-      font-size: 0.71rem !important;
+      font-size: 0.72rem !important;
       font-weight: 700 !important;
       text-align: center !important;
-      line-height: 1.15 !important;
+      line-height: 1.2 !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      max-width: 100% !important;
     }
 
     .app-desc {
