@@ -255,11 +255,73 @@ function setupRealtimeSubscription() {
       }
       lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
     })
+    // SUBSCRIPTIONS Realtime
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' }, (payload) => {
+      const { eventType, new: newRec, old: oldRec } = payload;
+      if (eventType === 'INSERT' || eventType === 'UPDATE') {
+        const item = {
+          ...newRec,
+          walletId: newRec.wallet_id || newRec.walletId || '',
+          billingDay: newRec.billing_day || newRec.billingDay || 1,
+          nextDue: newRec.next_due || newRec.nextDue || '',
+          isPaidThisMonth: newRec.is_paid_this_month !== undefined ? newRec.is_paid_this_month : newRec.isPaidThisMonth
+        };
+        subscriptions.update(list => {
+          const idx = list.findIndex(s => String(s.id) === String(item.id));
+          if (idx >= 0) {
+            list[idx] = item;
+            return [...list];
+          }
+          return [...list, item];
+        });
+      } else if (eventType === 'DELETE') {
+        subscriptions.update(list => list.filter(s => String(s.id) !== String(oldRec.id)));
+      }
+      lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+    })
+    // DEBTS Realtime
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'debts' }, (payload) => {
+      const { eventType, new: newRec, old: oldRec } = payload;
+      if (eventType === 'INSERT' || eventType === 'UPDATE') {
+        const item = {
+          ...newRec,
+          personName: newRec.person_name || newRec.personName || '',
+          paidAmount: newRec.paid_amount || newRec.paidAmount || 0,
+          dueDate: newRec.due_date || newRec.dueDate || ''
+        };
+        debts.update(list => {
+          const idx = list.findIndex(d => String(d.id) === String(item.id));
+          if (idx >= 0) {
+            list[idx] = item;
+            return [...list];
+          }
+          return [...list, item];
+        });
+      } else if (eventType === 'DELETE') {
+        debts.update(list => list.filter(d => String(d.id) !== String(oldRec.id)));
+      }
+      lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+    })
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         syncStatus.set('cloud_connected');
       }
     });
+
+  // Auto-resync when browser tab becomes active or phone wakes up
+  if (browser && !window._supabaseVisibilityBound) {
+    window._supabaseVisibilityBound = true;
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && supabase) {
+        pullAllFromCloud();
+      }
+    });
+    window.addEventListener('focus', () => {
+      if (supabase) {
+        pullAllFromCloud();
+      }
+    });
+  }
 }
 
 /**

@@ -15,6 +15,7 @@
   let errorMessage = '';
   let isShaking = false;
   let activeKeyIndex = null; // For keyboard press feedback animation
+  let rememberDevice = true; // By default remember this device so PIN is not repeatedly asked
 
   const STORAGE_KEY = 'finora_security_pin';
 
@@ -84,6 +85,16 @@
     errorMessage = '';
   }
 
+  function disablePinLock() {
+    if (browser) {
+      localStorage.setItem('finora_pin_enabled', 'false');
+      localStorage.setItem('finora_device_unlocked', 'true');
+      sessionStorage.setItem('finora_session_unlocked', 'true');
+    }
+    isLocked = false;
+    onClose();
+  }
+
   async function evaluatePin() {
     if (isSettingNewPin) {
       if (step === 1) {
@@ -101,6 +112,10 @@
             const data = await res.json();
             if (data.success) {
               localStorage.setItem(STORAGE_KEY, pinInput);
+              localStorage.setItem('finora_pin_enabled', 'true');
+              if (rememberDevice) {
+                localStorage.setItem('finora_device_unlocked', 'true');
+              }
               storedPin = pinInput;
               isLocked = false;
               isSettingNewPin = false;
@@ -112,8 +127,12 @@
               triggerError(data.error || 'Gagal menyimpan PIN ke server.');
             }
           } catch (e) {
-            // Offline fallback
+            // Offline / Cloud fallback
             localStorage.setItem(STORAGE_KEY, pinInput);
+            localStorage.setItem('finora_pin_enabled', 'true');
+            if (rememberDevice) {
+              localStorage.setItem('finora_device_unlocked', 'true');
+            }
             storedPin = pinInput;
             isLocked = false;
             isSettingNewPin = false;
@@ -135,6 +154,9 @@
         });
         const data = await res.json();
         if (data.success) {
+          if (rememberDevice) {
+            localStorage.setItem('finora_device_unlocked', 'true');
+          }
           isLocked = false;
           pinInput = '';
           onClose();
@@ -142,9 +164,12 @@
           triggerError('PIN Salah. Akses keamanan ditolak.');
         }
       } catch (e) {
-        // Offline fallback
+        // Offline / Cloud fallback
         storedPin = localStorage.getItem(STORAGE_KEY);
         if (storedPin && pinInput === storedPin) {
+          if (rememberDevice) {
+            localStorage.setItem('finora_device_unlocked', 'true');
+          }
           isLocked = false;
           pinInput = '';
           onClose();
@@ -345,12 +370,24 @@
 
       <!-- Bottom Security Footer -->
       <div class="lock-footer">
-        {#if storedPin && !isSettingNewPin}
-          <button type="button" class="footer-link-btn" on:click={resetPinConfirm}>
-            <i class="fa-solid fa-unlock-keyhole"></i>
-            <span>Lupa atau Reset PIN?</span>
+        <label class="remember-device-checkbox" title="Jika dicentang, aplikasi tidak akan meminta PIN lagi saat dibuka di perangkat ini">
+          <input type="checkbox" bind:checked={rememberDevice} />
+          <span>Ingat perangkat ini (jangan minta PIN lagi)</span>
+        </label>
+
+        <div class="footer-action-links">
+          <button type="button" class="footer-link-btn disable-btn" on:click={disablePinLock} title="Buka aplikasi langsung dan matikan fitur kunci PIN">
+            <i class="fa-solid fa-lock-open"></i>
+            <span>Matikan Kunci PIN</span>
           </button>
-        {/if}
+
+          {#if storedPin && !isSettingNewPin}
+            <button type="button" class="footer-link-btn" on:click={resetPinConfirm}>
+              <i class="fa-solid fa-unlock-keyhole"></i>
+              <span>Reset PIN</span>
+            </button>
+          {/if}
+        </div>
       </div>
     </div>
   </div>
@@ -753,10 +790,38 @@
   /* Footer Links */
   .lock-footer {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 28px;
-    margin-top: 4px;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .remember-device-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.775rem;
+    color: #94a3b8;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+  }
+
+  .remember-device-checkbox:hover {
+    color: #cbd5e1;
+  }
+
+  .remember-device-checkbox input[type="checkbox"] {
+    accent-color: #6366f1;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+  }
+
+  .footer-action-links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
 
   .footer-link-btn {
@@ -776,6 +841,10 @@
   .footer-link-btn:hover {
     color: #818cf8;
     transform: translateY(-1px);
+  }
+
+  .footer-link-btn.disable-btn:hover {
+    color: #38bdf8;
   }
 
   /* Shake animation */

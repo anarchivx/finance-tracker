@@ -49,12 +49,15 @@
 
   onMount(() => {
     if (browser) {
-      const isSessionUnlocked =
-        sessionStorage.getItem("finora_session_unlocked") === "true";
-      if (isSessionUnlocked) {
+      const isPinDisabled = localStorage.getItem("finora_pin_enabled") === "false";
+      const isDeviceRemembered = localStorage.getItem("finora_device_unlocked") === "true";
+      const isSessionUnlocked = sessionStorage.getItem("finora_session_unlocked") === "true";
+
+      if (isPinDisabled || isDeviceRemembered || isSessionUnlocked) {
         isAppLocked = false;
       } else {
-        isAppLocked = true;
+        const hasPin = localStorage.getItem("finora_security_pin");
+        isAppLocked = !!hasPin; // Hanya kunci jika pengguna memang sudah pernah membuat PIN
       }
     }
   });
@@ -77,12 +80,18 @@
   }
 
   function lockApp() {
-    if (browser) sessionStorage.removeItem("finora_session_unlocked");
+    if (browser) {
+      sessionStorage.removeItem("finora_session_unlocked");
+      localStorage.removeItem("finora_device_unlocked");
+      localStorage.setItem("finora_pin_enabled", "true");
+    }
     isAppLocked = true;
   }
 
   function unlockApp() {
-    if (browser) sessionStorage.setItem("finora_session_unlocked", "true");
+    if (browser) {
+      sessionStorage.setItem("finora_session_unlocked", "true");
+    }
     isAppLocked = false;
   }
 </script>
