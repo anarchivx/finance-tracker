@@ -151,12 +151,12 @@
       <div class="modal-header">
         <div class="header-left">
           <div class="modal-icon {type}">
-            <i class={editingTransaction ? 'fa-solid fa-pen-to-square' : (type === 'income' ? 'fa-solid fa-arrow-down-left' : 'fa-solid fa-arrow-up-right')}></i>
+            <i class={editingTransaction ? 'fa-solid fa-pen-to-square' : (type === 'income' ? 'fa-solid fa-arrow-down' : 'fa-solid fa-arrow-up')}></i>
           </div>
           <div>
             <h3>{editingTransaction ? 'Edit Transaksi' : (type === 'income' ? 'Tambah Pemasukan Baru' : 'Tambah Pengeluaran Baru')}</h3>
             <span class="header-subtitle">
-              {editingTransaction ? 'Perbarui data transaksi ini secara real-time' : 'Data akan tersinkronisasi otomatis ke SQLite real-time'}
+              {editingTransaction ? 'Perbarui data transaksi ini secara real-time' : 'Data akan tersinkronisasi otomatis ke cloud real-time'}
             </span>
           </div>
         </div>
@@ -610,8 +610,10 @@
     .modal-card {
       max-width: 100%;
       border-radius: 28px 28px 0 0;
-      padding: 18px 20px 0;
+      padding: 16px 18px 0;
       max-height: 88vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.6);
       animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     }
@@ -621,15 +623,20 @@
       to { transform: translateY(0); }
     }
 
+    .modal-form {
+      padding-bottom: 20px;
+    }
+
     .category-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
+      gap: 8px;
+      max-height: 190px;
     }
 
     .cat-chip {
-      min-height: 48px;
-      padding: 10px 14px;
-      font-size: 0.88rem;
+      min-height: 44px;
+      padding: 8px 12px;
+      font-size: 0.84rem;
       border-radius: var(--radius-md);
     }
 
@@ -642,13 +649,13 @@
       position: sticky;
       bottom: 0;
       background: #0f172a;
-      margin-left: -20px;
-      margin-right: -20px;
-      padding: 14px 20px max(18px, env(safe-area-inset-bottom));
+      margin-left: -18px;
+      margin-right: -18px;
+      padding: 12px 18px max(18px, env(safe-area-inset-bottom));
       border-top: 1px solid var(--border-glass);
-      margin-top: 20px;
+      margin-top: 16px;
       display: flex;
-      gap: 12px;
+      gap: 10px;
       z-index: 20;
       box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.45);
     }

@@ -3063,116 +3063,239 @@
 
   @media (max-width: 640px) {
     .cockpit-wrapper {
-      gap: 1.25rem;
+      gap: 1rem;
     }
 
     .cockpit-top-bar {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.75rem;
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 0.6rem;
     }
 
-    .telemetry-pills-cluster {
-      justify-content: space-between;
-      width: 100%;
+    .welcome-badge-group {
+      gap: 0.6rem;
+    }
+
+    .avatar-finora {
+      width: 38px;
+      height: 38px;
+      font-size: 1rem;
+    }
+
+    .welcome-title {
+      font-size: 0.95rem !important;
+    }
+
+    .welcome-subtitle {
+      font-size: 0.7rem !important;
+    }
+
+    .telemetry-pill.privacy-btn {
+      padding: 5px 9px !important;
+      font-size: 0.72rem !important;
+      white-space: nowrap !important;
+    }
+
+    .wallet-nav-scroller {
+      padding: 2px 2px 8px !important;
+      gap: 6px !important;
+    }
+
+    .wallet-tab-pill {
+      padding: 6px 10px !important;
+      font-size: 0.7rem !important;
     }
 
     .luxury-titanium-card {
-      padding: 20px 16px 18px;
-      border-radius: 22px;
+      padding: 16px 14px 14px;
+      border-radius: 20px;
+    }
+
+    .card-tier-text {
+      font-size: 0.65rem;
+    }
+
+    .balance-sub-label {
+      font-size: 0.64rem;
     }
 
     .balance-amount {
-      font-size: clamp(1.65rem, 6.8vw, 2.2rem) !important;
+      font-size: clamp(1.5rem, 6.2vw, 2rem) !important;
       letter-spacing: -0.5px;
     }
 
+    .peek-eye-btn {
+      width: 30px;
+      height: 30px;
+      font-size: 0.8rem;
+    }
+
     .wallet-asset-mix-row {
-      display: grid !important;
-      grid-template-columns: repeat(3, 1fr) !important;
-      gap: 6px !important;
-      margin-top: 12px !important;
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 5px !important;
+      margin-top: 10px !important;
     }
 
     .asset-mix-pill {
-      padding: 5px 6px !important;
-      font-size: 0.68rem !important;
-      justify-content: center !important;
-      text-align: center;
+      flex: 1 1 auto !important;
+      padding: 5px 7px !important;
+      font-size: 0.66rem !important;
+      justify-content: space-between !important;
+      box-sizing: border-box !important;
+    }
+
+    .card-embossed-details {
+      margin-bottom: 0.75rem;
+    }
+
+    .card-number-embossed {
+      font-size: 0.82rem !important;
+      letter-spacing: 1.5px !important;
+      gap: 0.45rem !important;
+    }
+
+    .card-footer-action-row {
+      padding-top: 0.7rem;
+      gap: 0.65rem;
+    }
+
+    .meter-text-row {
+      font-size: 0.72rem;
     }
 
     .card-cta-group {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 6px !important;
+      width: 100% !important;
+    }
+
+    .cta-pill-btn {
+      padding: 8px 3px !important;
+      font-size: 0.72rem !important;
+      gap: 4px !important;
+      border-radius: 10px !important;
+      justify-content: center !important;
+      white-space: nowrap !important;
+    }
+
+    .btn-icon-wrap {
+      width: 18px !important;
+      height: 18px !important;
+      font-size: 0.62rem !important;
+      border-radius: 5px !important;
+      flex-shrink: 0 !important;
+    }
+
+    /* Income & Expense Telemetry Twin-Grid */
+    .side-flow-container {
       display: grid !important;
       grid-template-columns: 1fr 1fr !important;
       gap: 8px !important;
     }
 
-    .card-cta-group .btn-cta-full {
-      grid-column: span 2;
+    .telemetry-flow-card {
+      padding: 12px 10px !important;
+      border-radius: 16px !important;
     }
 
-    .card-embossed-details {
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.5rem;
+    .flow-icon-circle {
+      width: 32px !important;
+      height: 32px !important;
+      font-size: 0.85rem !important;
+    }
+
+    .flow-badge {
+      font-size: 0.62rem !important;
+      padding: 2px 6px !important;
+    }
+
+    .flow-card-label {
+      font-size: 0.7rem !important;
+      margin-top: 4px !important;
+    }
+
+    .flow-card-amount {
+      font-size: 1.02rem !important;
+      margin-top: 2px !important;
+    }
+
+    .flow-sparkline-svg {
+      height: 22px !important;
+      margin: 4px 0 !important;
+    }
+
+    .flow-caption {
+      font-size: 0.64rem !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Floating Quick Launcher 3x2 Grid */
+    .launcher-dock-container {
+      margin-top: -0.25rem;
     }
 
     .dock-glass-capsule {
+      display: grid !important;
       grid-template-columns: repeat(3, 1fr) !important;
       gap: 8px !important;
-      padding: 10px !important;
-      border-radius: 20px !important;
+      padding: 12px 8px !important;
+      border-radius: 18px !important;
     }
 
-    .dock-action-btn {
-      padding: 10px 4px !important;
-      border-radius: 14px !important;
+    .dock-app-item {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      padding: 8px 4px !important;
+      border-radius: 12px !important;
+      background: transparent !important;
     }
 
-    .btn-icon-bubble {
-      width: 40px !important;
-      height: 40px !important;
-      font-size: 1.05rem !important;
-      margin-bottom: 6px !important;
+    .app-icon-squircle {
+      width: 42px !important;
+      height: 42px !important;
+      font-size: 1.15rem !important;
+      margin-bottom: 5px !important;
+      border-radius: 12px !important;
     }
 
-    .btn-primary-title {
-      font-size: 0.74rem !important;
+    .app-name {
+      font-size: 0.71rem !important;
       font-weight: 700 !important;
+      text-align: center !important;
+      line-height: 1.15 !important;
     }
 
-    .btn-secondary-desc {
+    .app-desc {
       display: none !important;
     }
 
     .stream-tx-row {
-      padding: 10px 12px !important;
-      border-radius: 14px !important;
+      padding: 9px 10px !important;
+      border-radius: 12px !important;
     }
 
     .tx-avatar-box {
-      width: 40px !important;
-      height: 40px !important;
-      font-size: 0.95rem !important;
+      width: 36px !important;
+      height: 36px !important;
+      font-size: 0.9rem !important;
     }
 
     .tx-desc-title {
-      font-size: 0.88rem !important;
+      font-size: 0.84rem !important;
+    }
+
+    .tx-meta-info {
+      font-size: 0.68rem !important;
     }
 
     .tx-amount-pill {
-      font-size: 0.84rem !important;
-      padding: 4px 10px !important;
-    }
-  }
-
-  @media (max-width: 400px) {
-    .wallet-asset-mix-row {
-      grid-template-columns: 1fr !important;
-    }
-    .dock-glass-capsule {
-      grid-template-columns: repeat(2, 1fr) !important;
+      font-size: 0.8rem !important;
+      padding: 3px 8px !important;
     }
   }
 </style>

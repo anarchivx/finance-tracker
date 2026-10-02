@@ -582,7 +582,7 @@
     background: linear-gradient(180deg, #131b2e 0%, #0b101d 100%);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 28px 28px 0 0;
-    padding: 16px 20px max(24px, env(safe-area-inset-bottom));
+    padding: 16px 18px calc(24px + env(safe-area-inset-bottom));
     box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.7);
     animation: sheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   }
