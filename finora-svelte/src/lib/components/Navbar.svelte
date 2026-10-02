@@ -470,7 +470,7 @@
 
   @media (max-width: 640px) {
     .navbar-wrapper {
-      padding: 8px 14px;
+      padding: 10px 14px;
     }
     .brand-logo {
       width: 36px;
@@ -478,27 +478,29 @@
       font-size: 1.1rem;
     }
     .brand-title {
-      font-size: 1.05rem;
+      font-size: 1.1rem;
     }
     .pro-tag {
       display: none;
     }
     .nav-actions {
-      gap: 6px;
+      gap: 8px;
     }
     .currency-select {
-      padding: 5px 6px;
-      font-size: 0.75rem;
+      display: none; /* Disediakan rapi di menu bawah (Quick Hub) */
+    }
+    .lock-btn {
+      display: none; /* Disediakan di menu bawah (Quick Hub) */
     }
     .privacy-btn,
-    .lock-btn,
-    .theme-btn {
-      width: 32px;
-      height: 32px;
-      font-size: 0.85rem;
+    .theme-btn,
+    .cloud-btn {
+      width: 36px;
+      height: 36px;
+      font-size: 0.9rem;
     }
     .cta-btn {
-      display: none; /* Already present in mobile dock */
+      display: none; /* Sudah ada tombol tambah (+) mengambang di dock bawah */
     }
   }
 </style>

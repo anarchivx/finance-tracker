@@ -725,4 +725,38 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.debts;`;
     color: #38bdf8;
     text-decoration: underline;
   }
+
+  @media (max-width: 640px) {
+    .modal-backdrop {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    .modal-card {
+      border-radius: 24px 24px 0 0;
+      max-height: 90vh;
+      padding: 1.25rem 1rem max(1.25rem, env(safe-area-inset-bottom));
+    }
+
+    .migration-card {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .migrate-btn {
+      justify-content: center;
+      width: 100%;
+    }
+
+    .modal-actions {
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .action-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 </style>

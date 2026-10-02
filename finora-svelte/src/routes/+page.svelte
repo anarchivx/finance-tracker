@@ -383,6 +383,22 @@
           </button>
         </div>
 
+        <!-- Quick Currency Selector in Mobile Sheet -->
+        <div class="sheet-currency-bar">
+          <span class="currency-bar-label"><i class="fa-solid fa-coins"></i> Mata Uang:</span>
+          <div class="currency-pills">
+            {#each ["IDR", "USD", "EUR"] as cur}
+              <button
+                class="currency-pill-btn"
+                class:active={$currency === cur}
+                on:click={() => ($currency = cur)}
+              >
+                {cur === 'IDR' ? '🇮🇩 IDR' : cur === 'USD' ? '🇺🇸 USD' : '🇪🇺 EUR'}
+              </button>
+            {/each}
+          </div>
+        </div>
+
         <button
           class="sheet-dismiss-btn"
           on:click={() => (isMobileMenuOpen = false)}
@@ -416,7 +432,8 @@
 <style>
   .page-wrapper {
     min-height: 100vh;
-    padding-bottom: 95px;
+    padding-bottom: calc(95px + env(safe-area-inset-bottom));
+    overflow-x: hidden;
   }
 
   .dashboard-body {
@@ -448,7 +465,7 @@
     display: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     .mobile-dock {
       display: flex;
       position: fixed;
@@ -559,6 +576,9 @@
   .quick-sheet-card {
     width: 100%;
     max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: linear-gradient(180deg, #131b2e 0%, #0b101d 100%);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 28px 28px 0 0;
@@ -803,6 +823,58 @@
   .tile-desc {
     font-size: 0.65rem;
     color: var(--text-muted);
+  }
+
+  .sheet-currency-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+
+  :global([data-theme="light"]) .sheet-currency-bar,
+  :global(body.light-mode) .sheet-currency-bar {
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .currency-bar-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .currency-pills {
+    display: flex;
+    gap: 6px;
+  }
+
+  .currency-pill-btn {
+    background: transparent;
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 5px 9px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+
+  .currency-pill-btn.active {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px var(--primary-glow);
   }
 
   .sheet-dismiss-btn {

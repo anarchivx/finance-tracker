@@ -3062,28 +3062,117 @@
   }
 
   @media (max-width: 640px) {
-    .dock-glass-capsule {
-      grid-template-columns: repeat(2, 1fr);
-      padding: 0.75rem;
-    }
-
-    .card-cta-group {
-      flex-direction: column;
-    }
-
-    .card-embossed-details {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.75rem;
-    }
-
-    .balance-amount {
-      font-size: 2.1rem;
+    .cockpit-wrapper {
+      gap: 1.25rem;
     }
 
     .cockpit-top-bar {
       flex-direction: column;
-      align-items: flex-start;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .telemetry-pills-cluster {
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .luxury-titanium-card {
+      padding: 20px 16px 18px;
+      border-radius: 22px;
+    }
+
+    .balance-amount {
+      font-size: clamp(1.65rem, 6.8vw, 2.2rem) !important;
+      letter-spacing: -0.5px;
+    }
+
+    .wallet-asset-mix-row {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 6px !important;
+      margin-top: 12px !important;
+    }
+
+    .asset-mix-pill {
+      padding: 5px 6px !important;
+      font-size: 0.68rem !important;
+      justify-content: center !important;
+      text-align: center;
+    }
+
+    .card-cta-group {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+
+    .card-cta-group .btn-cta-full {
+      grid-column: span 2;
+    }
+
+    .card-embossed-details {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dock-glass-capsule {
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 8px !important;
+      padding: 10px !important;
+      border-radius: 20px !important;
+    }
+
+    .dock-action-btn {
+      padding: 10px 4px !important;
+      border-radius: 14px !important;
+    }
+
+    .btn-icon-bubble {
+      width: 40px !important;
+      height: 40px !important;
+      font-size: 1.05rem !important;
+      margin-bottom: 6px !important;
+    }
+
+    .btn-primary-title {
+      font-size: 0.74rem !important;
+      font-weight: 700 !important;
+    }
+
+    .btn-secondary-desc {
+      display: none !important;
+    }
+
+    .stream-tx-row {
+      padding: 10px 12px !important;
+      border-radius: 14px !important;
+    }
+
+    .tx-avatar-box {
+      width: 40px !important;
+      height: 40px !important;
+      font-size: 0.95rem !important;
+    }
+
+    .tx-desc-title {
+      font-size: 0.88rem !important;
+    }
+
+    .tx-amount-pill {
+      font-size: 0.84rem !important;
+      padding: 4px 10px !important;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .wallet-asset-mix-row {
+      grid-template-columns: 1fr !important;
+    }
+    .dock-glass-capsule {
+      grid-template-columns: repeat(2, 1fr) !important;
     }
   }
 </style>
