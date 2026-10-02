@@ -295,20 +295,26 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 3px;
     line-height: 1;
+    background: none !important;
+    -webkit-background-clip: initial !important;
+    -webkit-text-fill-color: initial !important;
   }
 
   .fin-text {
-    color: #ffffff;
-    text-shadow: 0 2px 14px rgba(255, 255, 255, 0.25);
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    text-shadow: 0 0 25px rgba(255, 255, 255, 0.8), 0 2px 10px rgba(0, 0, 0, 0.9) !important;
+    font-weight: 900 !important;
   }
 
   .ora-text {
-    background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #38bdf8 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 16px rgba(129, 140, 248, 0.45));
+    background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 50%, #38bdf8 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    filter: drop-shadow(0 0 16px rgba(129, 140, 248, 0.6)) !important;
+    font-weight: 900 !important;
   }
 
   .badge-pro {

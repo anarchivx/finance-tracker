@@ -1,4 +1,5 @@
 <script>
+  import { onDestroy } from 'svelte';
   import { emitAddTransaction } from '../socket.js';
   import { wallets, currency, formatCurrency } from '../stores.js';
   import confetti from 'canvas-confetti';
@@ -8,6 +9,14 @@
   let scanProgress = 0;
   let previewImage = null;
   let saveSuccessMessage = '';
+
+  // In-App Live Camera Viewfinder State
+  let isCameraModalOpen = false;
+  let videoElement;
+  let mediaStream = null;
+  let cameraError = '';
+  let facingMode = 'environment';
+  let isTakingPhoto = false;
 
   // Form Fields for the parsed transaction
   let storeName = '';
@@ -152,6 +161,70 @@
     reader.readAsDataURL(file);
   }
 
+  async function openLiveCamera() {
+    cameraError = '';
+    isCameraModalOpen = true;
+    try {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((t) => t.stop());
+      }
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      if (videoElement) {
+        videoElement.srcObject = mediaStream;
+        await videoElement.play();
+      }
+    } catch (err) {
+      console.warn('Camera access error:', err);
+      cameraError = 'Izin kamera belum aktif atau tidak didukung di peramban ini. Anda bisa menggunakan tombol kamera bawaan HP di bawah ini.';
+    }
+  }
+
+  function toggleCamera() {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    openLiveCamera();
+  }
+
+  function closeLiveCamera() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((t) => t.stop());
+      mediaStream = null;
+    }
+    isCameraModalOpen = false;
+    cameraError = '';
+  }
+
+  function snapPhoto() {
+    if (!videoElement) return;
+    isTakingPhoto = true;
+    setTimeout(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElement.videoWidth || 1280;
+      canvas.height = videoElement.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+      closeLiveCamera();
+      isTakingPhoto = false;
+
+      runSimulationScan({
+        ...sampleReceipts[0],
+        store: 'Struk Kamera ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      }, dataUrl);
+    }, 200);
+  }
+
+  onDestroy(() => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((t) => t.stop());
+    }
+  });
+
   function removeItem(index) {
     itemizedLines = itemizedLines.filter((_, i) => i !== index);
     const newTotal = itemizedLines.reduce((acc, it) => acc + (it.price * it.qty), 0);
@@ -272,15 +345,37 @@
         {:else if !isScanning && !scannedReceipt}
           <div class="upload-placeholder">
             <div class="icon-circle upload-circle">
-              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <i class="fa-solid fa-camera-retro"></i>
             </div>
-            <h4>Tarik & Lepas Foto Struk ke Sini</h4>
-            <p>Mendukung format JPG, PNG, WebP atau ambil foto dari kamera HP</p>
-            <label class="browse-file-btn">
-              <i class="fa-solid fa-camera"></i>
-              <span>Pilih Gambar / Buka Kamera</span>
-              <input type="file" accept="image/*" on:change={handleFileUpload} />
-            </label>
+            <h4>Ambil Foto Struk atau Unggah Gambar</h4>
+            <p>Pindai struk kasir, nota belanja, atau tiket SPBU untuk pencatatan otomatis</p>
+            
+            <div class="scan-button-group">
+              <!-- Option 1: Live Interactive Camera Viewfinder -->
+              <button type="button" class="btn-scan-action primary-camera" on:click={openLiveCamera}>
+                <div class="btn-action-icon"><i class="fa-solid fa-camera"></i></div>
+                <div class="btn-action-text">
+                  <span class="btn-main-title">Buka Kamera Langsung</span>
+                  <span class="btn-sub-desc">Jepret struk dengan viewfinder</span>
+                </div>
+              </button>
+
+              <div class="action-secondary-row">
+                <!-- Option 2: Direct Native Mobile Camera -->
+                <label class="btn-scan-action secondary-native">
+                  <i class="fa-solid fa-camera-rotate"></i>
+                  <span>Kamera Bawaan HP</span>
+                  <input type="file" accept="image/*" capture="environment" on:change={handleFileUpload} />
+                </label>
+
+                <!-- Option 3: Choose from Gallery/Files -->
+                <label class="btn-scan-action secondary-gallery">
+                  <i class="fa-solid fa-images"></i>
+                  <span>Pilih dari Galeri</span>
+                  <input type="file" accept="image/*" on:change={handleFileUpload} />
+                </label>
+              </div>
+            </div>
           </div>
         {:else if scannedReceipt}
           <div class="receipt-visual-paper">
@@ -437,6 +532,92 @@
       {/if}
     </div>
   </div>
+
+  <!-- In-App Camera Viewfinder Modal -->
+  {#if isCameraModalOpen}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="camera-modal-backdrop" on:click={closeLiveCamera} role="dialog" aria-modal="true" tabindex="-1">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <div class="camera-modal-card" on:click|stopPropagation role="document">
+        <!-- Top bar -->
+        <div class="cam-top-bar">
+          <div class="cam-title">
+            <i class="fa-solid fa-camera"></i>
+            <span>Pindai Struk Kamera</span>
+          </div>
+          <div class="cam-actions">
+            <button type="button" class="cam-icon-btn" on:click={toggleCamera} title="Putar Kamera Depan / Belakang">
+              <i class="fa-solid fa-camera-rotate"></i>
+            </button>
+            <button type="button" class="cam-icon-btn close" on:click={closeLiveCamera} title="Tutup">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Video Viewfinder Container -->
+        <div class="cam-viewfinder-container">
+          {#if cameraError}
+            <div class="cam-error-state">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <p>{cameraError}</p>
+              <label class="btn-native-fallback">
+                <i class="fa-solid fa-camera"></i>
+                <span>Gunakan Kamera Bawaan HP</span>
+                <input type="file" accept="image/*" capture="environment" on:change={(e) => { closeLiveCamera(); handleFileUpload(e); }} />
+              </label>
+            </div>
+          {:else}
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video
+              bind:this={videoElement}
+              playsinline
+              autoplay
+              muted
+              class="cam-video-stream"
+              class:flash-shutter={isTakingPhoto}
+            ></video>
+
+            <!-- Scanning Guide Overlay Grid -->
+            <div class="cam-guide-overlay">
+              <div class="guide-corner top-left"></div>
+              <div class="guide-corner top-right"></div>
+              <div class="guide-corner bottom-left"></div>
+              <div class="guide-corner bottom-right"></div>
+              <div class="cam-laser-guide"></div>
+              <span class="guide-text">Arahkan struk dalam bingkai</span>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Camera Bottom Controls -->
+        {#if !cameraError}
+          <div class="cam-bottom-bar">
+            <!-- Native Camera Alternative -->
+            <label class="cam-alt-pill" title="Buka Kamera Bawaan HP">
+              <i class="fa-solid fa-mobile-screen"></i>
+              <span>Kamera HP</span>
+              <input type="file" accept="image/*" capture="environment" on:change={(e) => { closeLiveCamera(); handleFileUpload(e); }} />
+            </label>
+
+            <!-- Main Shutter Button -->
+            <button type="button" class="cam-shutter-btn" on:click={snapPhoto} title="Jepret Foto">
+              <div class="shutter-inner-ring">
+                <div class="shutter-core"></div>
+              </div>
+            </button>
+
+            <!-- Pick from Gallery Alternative -->
+            <label class="cam-alt-pill" title="Pilih dari Galeri">
+              <i class="fa-solid fa-image"></i>
+              <span>Galeri</span>
+              <input type="file" accept="image/*" on:change={(e) => { closeLiveCamera(); handleFileUpload(e); }} />
+            </label>
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -644,26 +825,337 @@
     margin: 0 0 1.25rem 0;
   }
 
-  .browse-file-btn {
-    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-    color: #ffffff;
-    padding: 0.65rem 1.2rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 12px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
-    transition: transform 0.15s ease;
+  .scan-button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
   }
 
-  .browse-file-btn:hover {
+  .btn-scan-action {
+    display: flex;
+    align-items: center;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    font-family: inherit;
+    position: relative;
+    user-select: none;
+  }
+
+  .btn-scan-action input[type="file"] {
+    display: none;
+  }
+
+  .btn-scan-action.primary-camera {
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    color: #ffffff;
+    padding: 12px 18px;
+    gap: 14px;
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+  }
+
+  .btn-scan-action.primary-camera:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.5);
+  }
+
+  .btn-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .btn-action-text {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .btn-main-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+
+  .btn-sub-desc {
+    font-size: 0.72rem;
+    opacity: 0.85;
+  }
+
+  .action-secondary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .btn-scan-action.secondary-native,
+  .btn-scan-action.secondary-gallery {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.12));
+    color: var(--text-main, #ffffff);
+    padding: 10px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-scan-action.secondary-native:hover,
+  .btn-scan-action.secondary-gallery:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(99, 102, 241, 0.4);
     transform: translateY(-1px);
   }
 
-  .browse-file-btn input[type="file"] {
+  /* Camera Viewfinder Modal */
+  .camera-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .camera-modal-card {
+    background: #090d16;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 520px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cam-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .cam-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #ffffff;
+  }
+
+  .cam-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cam-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .cam-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
+
+  .cam-icon-btn.close:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+  }
+
+  .cam-viewfinder-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    max-height: 60vh;
+    background: #000000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cam-video-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cam-video-stream.flash-shutter {
+    animation: cameraFlash 0.25s ease-out;
+  }
+
+  @keyframes cameraFlash {
+    0% { filter: brightness(3); }
+    100% { filter: brightness(1); }
+  }
+
+  .cam-guide-overlay {
+    position: absolute;
+    inset: 18px;
+    border: 1px dashed rgba(255, 255, 255, 0.25);
+    border-radius: 16px;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 12px;
+  }
+
+  .guide-corner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: #6366f1;
+    border-style: solid;
+  }
+
+  .guide-corner.top-left { top: 0; left: 0; border-width: 3px 0 0 3px; border-top-left-radius: 12px; }
+  .guide-corner.top-right { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: 12px; }
+  .guide-corner.bottom-left { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: 12px; }
+  .guide-corner.bottom-right { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: 12px; }
+
+  .cam-laser-guide {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #ec4899, #6366f1, transparent);
+    box-shadow: 0 0 10px #ec4899;
+    animation: laserScan 2.5s ease-in-out infinite;
+  }
+
+  @keyframes laserScan {
+    0%, 100% { top: 10%; }
+    50% { top: 90%; }
+  }
+
+  .guide-text {
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .cam-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 16px 20px;
+    background: #090d16;
+  }
+
+  .cam-alt-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    cursor: pointer;
+  }
+
+  .cam-alt-pill input[type="file"] {
+    display: none;
+  }
+
+  .cam-alt-pill:hover {
+    color: #ffffff;
+  }
+
+  .cam-shutter-btn {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 3px solid #ffffff;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease;
+  }
+
+  .cam-shutter-btn:active {
+    transform: scale(0.92);
+  }
+
+  .shutter-inner-ring {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.5);
+  }
+
+  .cam-error-state {
+    padding: 24px;
+    text-align: center;
+    color: #f87171;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cam-error-state i {
+    font-size: 2.2rem;
+  }
+
+  .cam-error-state p {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    max-width: 320px;
+    margin: 0;
+  }
+
+  .btn-native-fallback {
+    background: #6366f1;
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .btn-native-fallback input[type="file"] {
     display: none;
   }
 

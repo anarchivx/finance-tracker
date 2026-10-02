@@ -413,11 +413,7 @@ body.light-mode {
   background: #f1f5f9;
 }
 
-[data-theme="light"] .brand-title {
-  background: linear-gradient(135deg, #0f172a 0%, #334155 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-}
+
 
 .pro-tag {
   color: #ffffff !important;
