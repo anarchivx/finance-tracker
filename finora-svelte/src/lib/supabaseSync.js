@@ -174,6 +174,27 @@ export async function pullAllFromCloud() {
       debts.set(formattedDebts);
     }
 
+    // 7. Check if a global security lock was triggered while this device was sleeping or offline
+    try {
+      const { data: settingData, error: sErr } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'last_global_lock')
+        .maybeSingle();
+
+      if (!sErr && settingData && settingData.value) {
+        const globalLockTs = Number(settingData.value) || 0;
+        const lastUnlockedTs = Number(localStorage.getItem('finora_last_unlocked_at') || '0');
+        if (globalLockTs > lastUnlockedTs) {
+          if (typeof window !== 'undefined' && window._handleGlobalLock) {
+            window._handleGlobalLock(globalLockTs);
+          }
+        }
+      }
+    } catch (e) {
+      // Table might not exist yet if migration hasn't been executed
+    }
+
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
   } catch (err) {
     console.warn('[Supabase] Pull error:', err);
@@ -192,6 +213,23 @@ function setupRealtimeSubscription() {
 
   realtimeChannel = supabase
     .channel('finora-realtime-hub')
+    // GLOBAL SECURITY LOCK (Realtime Broadcast across all active devices)
+    .on('broadcast', { event: 'security_lock_all' }, (payload) => {
+      const ts = payload?.payload?.timestamp || Date.now();
+      if (typeof window !== 'undefined' && window._handleGlobalLock) {
+        window._handleGlobalLock(ts);
+      }
+    })
+    // GLOBAL SECURITY LOCK (Database Change listener)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload) => {
+      const rec = payload?.new;
+      if (rec && rec.key === 'last_global_lock') {
+        const ts = Number(rec.value) || Date.now();
+        if (typeof window !== 'undefined' && window._handleGlobalLock) {
+          window._handleGlobalLock(ts);
+        }
+      }
+    })
     // TRANSACTIONS Realtime
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload) => {
       const { eventType, new: newRec, old: oldRec } = payload;
@@ -626,3 +664,30 @@ export async function cloudPushAllLocalToCloud(currentData) {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Broadcast Global Lock to all connected devices in realtime and persist to Supabase
+ */
+export async function cloudBroadcastGlobalLock(timestamp = Date.now()) {
+  if (!supabase) return;
+  try {
+    // 1. Send Realtime Broadcast
+    if (realtimeChannel) {
+      await realtimeChannel.send({
+        type: 'broadcast',
+        event: 'security_lock_all',
+        payload: { timestamp }
+      });
+    }
+
+    // 2. Persist to app_settings table
+    await supabase.from('app_settings').upsert({
+      key: 'last_global_lock',
+      value: String(timestamp),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+  } catch (err) {
+    console.warn('[Supabase] Global lock broadcast notice:', err?.message || err);
+  }
+}
+

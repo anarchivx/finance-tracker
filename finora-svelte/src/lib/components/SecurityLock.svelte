@@ -95,6 +95,22 @@
     onClose();
   }
 
+  function performUnlockSuccess() {
+    if (browser) {
+      const now = Date.now();
+      localStorage.setItem('finora_last_unlocked_at', String(now));
+      sessionStorage.setItem('finora_session_unlocked', 'true');
+      if (rememberDevice) {
+        localStorage.setItem('finora_device_unlocked', 'true');
+      }
+    }
+    isLocked = false;
+    pinInput = '';
+    confirmPin = '';
+    errorMessage = '';
+    onClose();
+  }
+
   async function evaluatePin() {
     if (isSettingNewPin) {
       if (step === 1) {
@@ -113,16 +129,10 @@
             if (data.success) {
               localStorage.setItem(STORAGE_KEY, pinInput);
               localStorage.setItem('finora_pin_enabled', 'true');
-              if (rememberDevice) {
-                localStorage.setItem('finora_device_unlocked', 'true');
-              }
               storedPin = pinInput;
-              isLocked = false;
               isSettingNewPin = false;
               step = 1;
-              pinInput = '';
-              confirmPin = '';
-              onClose();
+              performUnlockSuccess();
             } else {
               triggerError(data.error || 'Gagal menyimpan PIN ke server.');
             }
@@ -130,13 +140,10 @@
             // Offline / Cloud fallback
             localStorage.setItem(STORAGE_KEY, pinInput);
             localStorage.setItem('finora_pin_enabled', 'true');
-            if (rememberDevice) {
-              localStorage.setItem('finora_device_unlocked', 'true');
-            }
             storedPin = pinInput;
-            isLocked = false;
             isSettingNewPin = false;
-            onClose();
+            step = 1;
+            performUnlockSuccess();
           }
         } else {
           triggerError('Konfirmasi PIN tidak cocok. Silakan ulangi.');
@@ -154,12 +161,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          if (rememberDevice) {
-            localStorage.setItem('finora_device_unlocked', 'true');
-          }
-          isLocked = false;
-          pinInput = '';
-          onClose();
+          performUnlockSuccess();
         } else {
           triggerError('PIN Salah. Akses keamanan ditolak.');
         }
@@ -167,12 +169,7 @@
         // Offline / Cloud fallback
         storedPin = localStorage.getItem(STORAGE_KEY);
         if (storedPin && pinInput === storedPin) {
-          if (rememberDevice) {
-            localStorage.setItem('finora_device_unlocked', 'true');
-          }
-          isLocked = false;
-          pinInput = '';
-          onClose();
+          performUnlockSuccess();
         } else {
           triggerError('PIN Salah. Akses keamanan ditolak.');
         }
@@ -292,6 +289,12 @@
             Masukkan 4-digit kode akses untuk membuka data finansial Anda
           {/if}
         </p>
+        {#if !isSettingNewPin}
+          <div class="device-sync-tag">
+            <i class="fa-solid fa-shield-halved text-emerald"></i>
+            <span>Terkunci Serentak di Seluruh Perangkat</span>
+          </div>
+        {/if}
       </div>
 
       <!-- Glowing Futuristic PIN Indicator Pods -->
@@ -608,6 +611,21 @@
     font-size: 0.8rem;
     color: #94a3b8;
     line-height: 1.45;
+  }
+
+  .device-sync-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-top: 10px;
+    letter-spacing: 0.3px;
   }
 
   /* ========================================================================= */

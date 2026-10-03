@@ -45,10 +45,23 @@ app.use(express.json());
 // PIN SECURITY ENDPOINTS (SINGLE MASTER PIN FOR ALL DEVICES)
 // ==============================================================================
 
+let lastGlobalLockTimestamp = 0;
+
 app.get('/api/auth/status', (req, res) => {
   try {
     const hasPin = hasSecurityPin();
-    res.json({ hasPin });
+    res.json({ hasPin, lastGlobalLockTimestamp });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/lock-all', (req, res) => {
+  try {
+    const timestamp = req.body?.timestamp || Date.now();
+    lastGlobalLockTimestamp = timestamp;
+    io.emit('security:lock_all', { timestamp });
+    res.json({ success: true, timestamp });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -219,6 +232,13 @@ io.on('connection', (socket) => {
   } catch (err) {
     console.error('Error sending initial sync:', err);
   }
+
+  // Handle global security lock broadcast
+  socket.on('security:lock_all', (payload) => {
+    const ts = payload?.timestamp || Date.now();
+    lastGlobalLockTimestamp = ts;
+    socket.broadcast.emit('security:lock_all', { timestamp: ts });
+  });
 
   // Handle transaction creation via socket
   socket.on('transaction:add', (txData, callback) => {

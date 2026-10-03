@@ -24,6 +24,8 @@
   import { activeTab, theme, isPrivacyMode, currency } from "$lib/stores.js";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
+  import { cloudBroadcastGlobalLock } from "$lib/supabaseSync.js";
+  import { emitGlobalLock } from "$lib/socket.js";
 
   let isModalOpen = false;
   let modalInitialType = "expense";
@@ -53,13 +55,68 @@
       const isPinDisabled = localStorage.getItem("finora_pin_enabled") === "false";
       const isDeviceRemembered = localStorage.getItem("finora_device_unlocked") === "true";
       const isSessionUnlocked = sessionStorage.getItem("finora_session_unlocked") === "true";
+      const lastUnlocked = Number(localStorage.getItem("finora_last_unlocked_at") || "0");
+      const lastGlobalLock = Number(localStorage.getItem("finora_last_global_lock") || "0");
 
-      if (isPinDisabled || isDeviceRemembered || isSessionUnlocked) {
+      if (lastGlobalLock > 0 && lastGlobalLock > lastUnlocked) {
+        // Global lock was triggered across devices after this device was last unlocked
+        isAppLocked = true;
+        sessionStorage.removeItem("finora_session_unlocked");
+        localStorage.removeItem("finora_device_unlocked");
+      } else if (isPinDisabled || isDeviceRemembered || isSessionUnlocked) {
         isAppLocked = false;
       } else {
         const hasPin = localStorage.getItem("finora_security_pin");
         isAppLocked = !!hasPin; // Hanya kunci jika pengguna memang sudah pernah membuat PIN
       }
+
+      // Universal handler for incoming remote lock events (Supabase, Socket.IO, BroadcastChannel)
+      window._handleGlobalLock = (remoteTs = Date.now()) => {
+        const myLastUnlocked = Number(localStorage.getItem("finora_last_unlocked_at") || "0");
+        if (remoteTs >= myLastUnlocked) {
+          localStorage.setItem("finora_last_global_lock", String(remoteTs));
+          lockApp(false); // Lock locally without re-broadcasting
+        }
+      };
+
+      // BroadcastChannel for instant same-browser cross-tab locking
+      let bc = null;
+      if (typeof BroadcastChannel !== "undefined") {
+        try {
+          bc = new BroadcastChannel("finora_security");
+          bc.onmessage = (event) => {
+            if (event.data && event.data.type === "lock_all") {
+              window._handleGlobalLock(event.data.timestamp);
+            }
+          };
+        } catch (e) {}
+      }
+
+      // Storage event listener for cross-tab sync
+      const storageHandler = (e) => {
+        if (e.key === "finora_global_lock_signal" && e.newValue) {
+          window._handleGlobalLock(Number(e.newValue));
+        }
+      };
+      window.addEventListener("storage", storageHandler);
+
+      // Re-check lock status when user switches back to this tab or device wakes from sleep
+      const wakeCheckHandler = () => {
+        const currentGlobalLock = Number(localStorage.getItem("finora_last_global_lock") || "0");
+        const myLastUnlocked = Number(localStorage.getItem("finora_last_unlocked_at") || "0");
+        if (currentGlobalLock > myLastUnlocked && !isAppLocked) {
+          lockApp(false);
+        }
+      };
+      window.addEventListener("visibilitychange", wakeCheckHandler);
+      window.addEventListener("focus", wakeCheckHandler);
+
+      return () => {
+        if (bc) bc.close();
+        window.removeEventListener("storage", storageHandler);
+        window.removeEventListener("visibilitychange", wakeCheckHandler);
+        window.removeEventListener("focus", wakeCheckHandler);
+      };
     }
   });
 
@@ -80,18 +137,45 @@
     editingTx = null;
   }
 
-  function lockApp() {
+  function lockApp(isGlobal = true) {
     if (browser) {
+      const ts = Date.now();
       sessionStorage.removeItem("finora_session_unlocked");
       localStorage.removeItem("finora_device_unlocked");
       localStorage.setItem("finora_pin_enabled", "true");
+      localStorage.setItem("finora_last_unlocked_at", "0");
+      localStorage.setItem("finora_last_global_lock", String(ts));
+
+      if (isGlobal) {
+        // Multi-tab instant sync via BroadcastChannel
+        if (typeof BroadcastChannel !== "undefined") {
+          try {
+            const bc = new BroadcastChannel("finora_security");
+            bc.postMessage({ type: "lock_all", timestamp: ts });
+            bc.close();
+          } catch (e) {}
+        }
+
+        // Multi-tab storage signal
+        try {
+          localStorage.setItem("finora_global_lock_signal", String(ts));
+        } catch (e) {}
+
+        // Realtime Supabase broadcast to all connected devices & cloud persistence
+        cloudBroadcastGlobalLock(ts);
+
+        // Backend Socket.IO & SQLite REST broadcast
+        emitGlobalLock(ts);
+      }
     }
     isAppLocked = true;
   }
 
   function unlockApp() {
     if (browser) {
+      const now = Date.now();
       sessionStorage.setItem("finora_session_unlocked", "true");
+      localStorage.setItem("finora_last_unlocked_at", String(now));
     }
     isAppLocked = false;
   }
@@ -373,14 +457,14 @@
             class="sheet-tile"
             on:click={() => {
               isMobileMenuOpen = false;
-              lockApp();
+              lockApp(true);
             }}
           >
             <div class="tile-icon lock-gradient">
               <i class="fa-solid fa-lock text-rose"></i>
             </div>
-            <span class="tile-label">Kunci PIN</span>
-            <span class="tile-desc">Kunci Brankas</span>
+            <span class="tile-label">Kunci Semua</span>
+            <span class="tile-desc">Kunci Semua Perangkat</span>
           </button>
         </div>
 

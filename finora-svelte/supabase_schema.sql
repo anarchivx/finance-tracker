@@ -107,3 +107,17 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.budgets;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.goals;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.subscriptions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.debts;
+
+-- ==============================================================================
+-- 7. TABEL APP SETTINGS (Sinkronisasi Status Keamanan & Kunci Multi-Perangkat)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read-write app_settings" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.app_settings;
+

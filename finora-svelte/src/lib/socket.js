@@ -121,6 +121,14 @@ export function initSocket() {
         });
         lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
       });
+
+      // SECURITY GLOBAL LOCK: Realtime listener across all devices
+      socket.on('security:lock_all', (payload) => {
+        const ts = payload?.timestamp || Date.now();
+        if (typeof window !== 'undefined' && window._handleGlobalLock) {
+          window._handleGlobalLock(ts);
+        }
+      });
     }
   } catch (e) {
     console.warn('[Socket.IO] Error initializing socket:', e);
@@ -132,6 +140,27 @@ export function initSocket() {
 export function getSocket() {
   return socket;
 }
+
+/**
+ * Emit Global Lock event to backend and all connected Socket.IO clients
+ */
+export function emitGlobalLock(timestamp = Date.now()) {
+  if (!browser) return;
+  const targetUrl = getServerUrl();
+  // 1. Emit via active Socket.IO connection
+  if (socket && socket.connected) {
+    socket.emit('security:lock_all', { timestamp });
+  }
+  // 2. Persist to backend SQLite via REST endpoint
+  fetch(`${targetUrl}/api/auth/lock-all`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timestamp })
+  }).catch((err) => {
+    // Backend may be offline or in pure cloud mode
+  });
+}
+
 
 // ==========================================================================
 // TRANSACTIONS HANDLERS

@@ -159,11 +159,11 @@
         {/if}
       </button>
 
-      <!-- Security Lock Button -->
+      <!-- Security Lock Button (Locks all connected devices simultaneously) -->
       <button
         class="btn-icon btn-outline lock-btn"
         on:click={onLockApp}
-        title="Kunci Aplikasi dengan PIN"
+        title="Kunci Semua Perangkat (Lock All Devices)"
       >
         <i class="fa-solid fa-lock text-rose"></i>
       </button>

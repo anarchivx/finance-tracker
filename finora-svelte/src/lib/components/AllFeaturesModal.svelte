@@ -283,13 +283,14 @@
 
           <button
             class="util-pill-btn"
+            title="Kunci Seluruh Perangkat Sekaligus"
             on:click={() => {
               onClose();
               onLockApp();
             }}
           >
             <i class="fa-solid fa-lock text-rose"></i>
-            <span>Kunci PIN</span>
+            <span>Kunci Semua Perangkat</span>
           </button>
         </div>
 
