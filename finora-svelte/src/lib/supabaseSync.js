@@ -691,3 +691,37 @@ export async function cloudBroadcastGlobalLock(timestamp = Date.now()) {
   }
 }
 
+/**
+ * Persist Custom Admin Authorization Key to Supabase Cloud
+ */
+export async function cloudSaveAdminKey(adminKey) {
+  if (!supabase || !adminKey) return;
+  try {
+    await supabase.from('app_settings').upsert({
+      key: 'admin_master_key',
+      value: String(adminKey).trim(),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+  } catch (err) {
+    console.warn('[Supabase] Save admin key notice:', err?.message || err);
+  }
+}
+
+/**
+ * Fetch Custom Admin Authorization Key from Supabase Cloud
+ */
+export async function cloudGetAdminKey() {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'admin_master_key')
+      .maybeSingle();
+    return data?.value || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+

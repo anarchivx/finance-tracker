@@ -99,15 +99,29 @@ app.post('/api/auth/set-pin', (req, res) => {
   }
 });
 
+let currentAdminMasterKey = process.env.ADMIN_MASTER_KEY || 'FINORA-ADMIN-2026';
+
 app.post('/api/auth/reset', (req, res) => {
   try {
     const { adminKey } = req.body || {};
-    const VALID_ADMIN_KEY = process.env.ADMIN_MASTER_KEY || 'FINORA-ADMIN-2026';
-    if (!adminKey || String(adminKey).trim().toUpperCase() !== VALID_ADMIN_KEY.toUpperCase()) {
+    if (!adminKey || String(adminKey).trim().toUpperCase() !== currentAdminMasterKey.toUpperCase()) {
       return res.status(403).json({ success: false, error: 'Otorisasi Gagal: Kode Kunci Administrator tidak valid.' });
     }
     resetSecurityPin();
     res.json({ success: true, message: 'Master PIN berhasil diatur ulang oleh Administrator.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/set-admin-key', (req, res) => {
+  try {
+    const { newAdminKey } = req.body || {};
+    if (!newAdminKey || String(newAdminKey).trim().length < 4) {
+      return res.status(400).json({ success: false, error: 'Kode Admin minimal 4 karakter.' });
+    }
+    currentAdminMasterKey = String(newAdminKey).trim();
+    res.json({ success: true, message: 'Kode Otorisasi Administrator berhasil diperbarui.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -9,12 +9,14 @@
   import FinoraLogo from "./FinoraLogo.svelte";
   import AllFeaturesModal from "./AllFeaturesModal.svelte";
   import CloudSyncModal from "./CloudSyncModal.svelte";
+  import AdminKeyModal from "./AdminKeyModal.svelte";
 
   export let onOpenModal = () => {};
   export let onLockApp = () => {};
 
   let isAllFeaturesOpen = false;
   let isCloudModalOpen = false;
+  let isAdminKeyModalOpen = false;
 
   const primaryTabs = [
     { id: "dashboard", label: "Ringkasan", icon: "fa-solid fa-chart-pie" },
@@ -159,6 +161,15 @@
         {/if}
       </button>
 
+      <!-- Admin Authorization Key Button -->
+      <button
+        class="btn-icon btn-outline admin-key-btn"
+        on:click={() => (isAdminKeyModalOpen = true)}
+        title="Atur Kode Otorisasi Administrator (Master Recovery Key)"
+      >
+        <i class="fa-solid fa-key text-amber"></i>
+      </button>
+
       <!-- Security Lock Button (Locks all connected devices simultaneously) -->
       <button
         class="btn-icon btn-outline lock-btn"
@@ -183,11 +194,17 @@
   onOpenAddModal={onOpenModal}
   onLockApp={onLockApp}
   onOpenCloudModal={() => (isCloudModalOpen = true)}
+  onOpenAdminKeyModal={() => (isAdminKeyModalOpen = true)}
 />
 
 <CloudSyncModal
   isOpen={isCloudModalOpen}
   onClose={() => (isCloudModalOpen = false)}
+/>
+
+<AdminKeyModal
+  isOpen={isAdminKeyModalOpen}
+  onClose={() => (isAdminKeyModalOpen = false)}
 />
 
 <style>

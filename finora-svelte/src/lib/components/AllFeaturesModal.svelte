@@ -8,6 +8,7 @@
   export let onOpenAddModal = () => {};
   export let onLockApp = () => {};
   export let onOpenCloudModal = () => {};
+  export let onOpenAdminKeyModal = () => {};
 
   let searchQuery = '';
 
@@ -291,6 +292,18 @@
           >
             <i class="fa-solid fa-lock text-rose"></i>
             <span>Kunci Semua Perangkat</span>
+          </button>
+
+          <button
+            class="util-pill-btn"
+            title="Kelola Kode Otorisasi Administrator (Master Recovery Key)"
+            on:click={() => {
+              onClose();
+              onOpenAdminKeyModal();
+            }}
+          >
+            <i class="fa-solid fa-key text-amber"></i>
+            <span>Kode Otorisasi Admin</span>
           </button>
         </div>
 
