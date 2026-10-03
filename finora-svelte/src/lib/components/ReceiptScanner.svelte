@@ -3,6 +3,7 @@
   import { emitAddTransaction } from '../socket.js';
   import { wallets, currency, formatCurrency } from '../stores.js';
   import confetti from 'canvas-confetti';
+  import ScanReceiptIcon from './ScanReceiptIcon.svelte';
 
   let isScanning = false;
   let scannedReceipt = null;
@@ -717,7 +718,7 @@
     <div class="header-info">
       <div class="title-with-pill">
         <h2>
-          <i class="fa-solid fa-receipt gradient-icon"></i>
+          <ScanReceiptIcon size={32} animated={true} glow={true} />
           Smart Receipt & Nota Scanner
         </h2>
         <span class="ai-badge">

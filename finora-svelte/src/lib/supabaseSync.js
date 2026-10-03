@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { browser } from '$app/environment';
+import { get } from 'svelte/store';
 import {
   transactions,
   wallets,
@@ -129,6 +130,11 @@ export async function pullAllFromCloud() {
         accountNumber: w.account_number || w.accountNumber || ''
       }));
       wallets.set(formattedWallets);
+    } else if (!wErr && (!wData || wData.length === 0)) {
+      const currentWallets = get(wallets);
+      if (currentWallets && currentWallets.length > 0) {
+        cloudSyncWallets(currentWallets);
+      }
     }
 
     // 3. Budgets
@@ -380,21 +386,62 @@ export async function cloudDeleteTransaction(id) {
 }
 
 export async function cloudUpdateWallet(wallet) {
-  if (!supabase) return;
+  if (!supabase || !wallet) return;
   try {
     const payload = {
-      id: wallet.id,
-      name: wallet.name,
-      type: wallet.type,
+      id: String(wallet.id),
+      name: wallet.name || 'Dompet',
+      type: wallet.type || 'bank',
       balance: Number(wallet.balance) || 0,
-      account_number: wallet.accountNumber || '',
-      gradient: wallet.gradient || '',
+      account_number: wallet.accountNumber || wallet.account_number || '',
+      gradient: wallet.gradient || 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
       icon: wallet.icon || 'fa-wallet',
-      badge: wallet.badge || ''
+      badge: wallet.badge || 'Aktif'
     };
-    await supabase.from('wallets').upsert(payload);
+    const { error } = await supabase.from('wallets').upsert(payload);
+    if (error) {
+      console.warn('[Supabase] update wallet error:', error.message);
+    } else {
+      lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+    }
   } catch (err) {
-    console.warn('[Supabase] update wallet error:', err);
+    console.warn('[Supabase] update wallet exception:', err);
+  }
+}
+
+export async function cloudDeleteWallet(id) {
+  if (!supabase || !id) return;
+  try {
+    const { error } = await supabase.from('wallets').delete().eq('id', String(id));
+    if (error) {
+      console.warn('[Supabase] delete wallet error:', error.message);
+    } else {
+      lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+    }
+  } catch (err) {
+    console.warn('[Supabase] delete wallet exception:', err);
+  }
+}
+
+export async function cloudSyncWallets(walletList) {
+  if (!supabase || !walletList || walletList.length === 0) return;
+  try {
+    const formatted = walletList.map((w) => ({
+      id: String(w.id),
+      name: w.name || 'Dompet',
+      type: w.type || 'bank',
+      balance: Number(w.balance) || 0,
+      account_number: w.accountNumber || w.account_number || '',
+      gradient: w.gradient || 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+      icon: w.icon || 'fa-wallet',
+      badge: w.badge || 'Aktif'
+    }));
+    const { error } = await supabase.from('wallets').upsert(formatted);
+    if (!error) {
+      lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+    }
+  } catch (err) {
+    console.warn('[Supabase] sync wallets error:', err);
   }
 }
 

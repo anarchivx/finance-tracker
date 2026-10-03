@@ -3,7 +3,8 @@ import { transactions, budgets, goals, wallets, syncStatus, lastSyncTime } from 
 import {
   cloudAddTransaction,
   cloudUpdateTransaction,
-  cloudDeleteTransaction
+  cloudDeleteTransaction,
+  cloudUpdateWallet
 } from './supabaseSync.js';
 
 let socket = null;
@@ -135,6 +136,7 @@ export function getSocket() {
 export function emitAddTransaction(tx) {
   return new Promise((resolve) => {
     let targetWalletId = tx.walletId;
+    let affectedWallet = null;
 
     // Auto-update wallet balance
     wallets.update((wList) => {
@@ -147,10 +149,11 @@ export function emitAddTransaction(tx) {
       return wList.map((w) => {
         if (w.id === targetWalletId) {
           const bal = Number(w.balance) || 0;
-          return {
+          affectedWallet = {
             ...w,
             balance: tx.type === 'income' ? bal + amt : Math.max(0, bal - amt)
           };
+          return affectedWallet;
         }
         return w;
       });
@@ -177,6 +180,11 @@ export function emitAddTransaction(tx) {
     // Sync to Supabase Cloud if connected
     cloudAddTransaction(localTx);
 
+    // Sync affected wallet balance to Supabase Cloud
+    if (affectedWallet) {
+      cloudUpdateWallet(affectedWallet);
+    }
+
     // Background REST call to persist in SQLite server
     const targetUrl = getServerUrl();
     fetch(`${targetUrl}/api/transactions`, {
@@ -189,6 +197,7 @@ export function emitAddTransaction(tx) {
 
 export function emitDeleteTransaction(id) {
   return new Promise((resolve) => {
+    let restoredWallet = null;
     transactions.update((list) => {
       const target = list.find((t) => String(t.id) === String(id));
       if (target && target.walletId) {
@@ -197,10 +206,11 @@ export function emitDeleteTransaction(id) {
           wList.map((w) => {
             if (w.id === target.walletId) {
               const bal = Number(w.balance) || 0;
-              return {
+              restoredWallet = {
                 ...w,
                 balance: target.type === 'income' ? Math.max(0, bal - amt) : bal + amt
               };
+              return restoredWallet;
             }
             return w;
           })
@@ -219,6 +229,11 @@ export function emitDeleteTransaction(id) {
 
     // Sync deletion to Supabase Cloud
     cloudDeleteTransaction(id);
+
+    // Sync restored wallet balance to Supabase Cloud
+    if (restoredWallet) {
+      cloudUpdateWallet(restoredWallet);
+    }
 
     const targetUrl = getServerUrl();
     fetch(`${targetUrl}/api/transactions/${id}`, { method: 'DELETE' }).catch(() => {});

@@ -9,14 +9,29 @@
     addWallet,
     updateWallet,
     deleteWallet,
-    requestConfirm
+    requestConfirm,
+    syncStatus,
+    lastSyncTime
   } from '../stores.js';
   import confetti from 'canvas-confetti';
+  import { fade, fly } from 'svelte/transition';
 
   // Modals state
   let isTransferModalOpen = false;
   let isWalletModalOpen = false;
   let editingWallet = null;
+
+  // Real-time Cloud Sync Feedback Toast
+  let syncSuccessToast = '';
+  let toastTimeout = null;
+
+  function showToast(msg) {
+    syncSuccessToast = msg;
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+      syncSuccessToast = '';
+    }, 4500);
+  }
 
   // Transfer form state
   let transferFromId = '';
@@ -95,6 +110,7 @@
         origin: { y: 0.6 }
       });
       isTransferModalOpen = false;
+      showToast(`Transfer Rp ${amt.toLocaleString('id-ID')} berhasil & otomatis tersinkron ke Cloud!`);
     }
   }
 
@@ -135,8 +151,10 @@
 
     if (editingWallet) {
       updateWallet(editingWallet.id, payload);
+      showToast(`Akun "${payload.name}" berhasil diperbarui & otomatis tersinkron ke Cloud Supabase!`);
     } else {
       addWallet(payload);
+      showToast(`Akun baru "${payload.name}" berhasil ditambahkan & tersinkron ke Cloud!`);
     }
     isWalletModalOpen = false;
     editingWallet = null;
@@ -149,7 +167,9 @@
       confirmText: 'Hapus Akun',
       confirmStyle: 'danger',
       onConfirm: () => {
+        const delName = wallet.name;
         deleteWallet(wallet.id);
+        showToast(`Akun "${delName}" telah dihapus & otomatis tersinkron ke Cloud.`);
       }
     });
   }
@@ -165,9 +185,13 @@
           Pusat Rekening & Dompet Digital
         </h2>
         <span class="count-pill">{$walletMetrics.count} Akun Aktif</span>
+        <span class="cloud-sync-pill" class:cloud-active={$syncStatus === 'connected' || $syncStatus === 'cloud_connected'}>
+          <i class="fa-solid {$syncStatus === 'connected' || $syncStatus === 'cloud_connected' ? 'fa-cloud-check' : 'fa-cloud'}"></i>
+          <span>{$syncStatus === 'connected' || $syncStatus === 'cloud_connected' ? 'Cloud Auto-Sync Aktif' : 'Tersimpan Lokal'}</span>
+        </span>
       </div>
       <p class="subtitle">
-        Kelola mutasi saldo kartu ATM, e-wallet, uang fisik, dan pindah dana antar rekening secara instan.
+        Kelola mutasi saldo kartu ATM, e-wallet, uang fisik, dan pindah dana antar rekening secara instan dengan sinkronisasi Cloud otomatis.
       </p>
     </div>
 
@@ -183,6 +207,20 @@
       </button>
     </div>
   </div>
+
+  <!-- Realtime Sync Notification Banner -->
+  {#if syncSuccessToast}
+    <div class="wallet-sync-toast" transition:fly={{ y: -8, duration: 250 }}>
+      <div class="toast-left">
+        <i class="fa-solid fa-circle-check toast-icon"></i>
+        <span>{syncSuccessToast}</span>
+      </div>
+      <div class="toast-badge">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>Supabase Sync</span>
+      </div>
+    </div>
+  {/if}
 
   <!-- Total Multi-Wallet Wealth Bar -->
   <div class="total-wealth-banner">
@@ -238,7 +276,34 @@
           </div>
         </div>
 
-        <!-- Card Quick Action Hover Bar -->
+        <!-- Mobile & Touch Action Strip (Always visible and easily tappable on phones) -->
+        <div class="card-mobile-strip">
+          <button
+            class="mobile-mini-btn"
+            title="Transfer dari dompet ini"
+            on:click|stopPropagation={() => openTransferModal(w.id)}
+          >
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+            <span>Transfer</span>
+          </button>
+          <button
+            class="mobile-mini-btn"
+            title="Ubah info dompet"
+            on:click|stopPropagation={() => openWalletModal(w)}
+          >
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Edit</span>
+          </button>
+          <button
+            class="mobile-mini-btn danger"
+            title="Hapus dompet"
+            on:click|stopPropagation={() => handleDeleteWallet(w)}
+          >
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+
+        <!-- Desktop Hover Quick Action Bar -->
         <div class="card-overlay-actions">
           <button
             class="action-pill-btn"
@@ -254,6 +319,7 @@
             on:click={() => openWalletModal(w)}
           >
             <i class="fa-solid fa-pen"></i>
+            <span>Edit</span>
           </button>
           <button
             class="action-pill-btn danger"
@@ -544,6 +610,70 @@
     border: 1px solid rgba(59, 130, 246, 0.25);
   }
 
+  .cloud-sync-pill {
+    font-size: 0.73rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-muted);
+    font-weight: 600;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .cloud-sync-pill.cloud-active {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  /* Realtime Sync Notification Banner */
+  .wallet-sync-toast {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 95, 70, 0.25) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: 12px;
+    padding: 0.75rem 1.1rem;
+    margin-bottom: 1.1rem;
+    color: #ffffff;
+    font-size: 0.88rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .toast-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 600;
+  }
+
+  .toast-icon {
+    color: #10b981;
+    font-size: 1.05rem;
+  }
+
+  .toast-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(16, 185, 129, 0.2);
+    color: #a7f3d0;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
+
   .subtitle {
     font-size: 0.88rem;
     color: var(--text-secondary);
@@ -788,6 +918,51 @@
   .action-pill-btn.danger:hover {
     background: rgba(239, 68, 68, 0.8);
     border-color: #ef4444;
+  }
+
+  /* Mobile & Touch Action Strip */
+  .card-mobile-strip {
+    display: none;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  @media (max-width: 768px), (hover: none) {
+    .card-mobile-strip {
+      display: flex;
+    }
+  }
+
+  .mobile-mini-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-mini-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .mobile-mini-btn.danger {
+    margin-left: auto;
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(220, 38, 38, 0.25);
   }
 
   /* Modal Backdrop & Card */

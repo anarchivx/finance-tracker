@@ -257,16 +257,20 @@ export function transferFunds({ fromId, toId, amount, note = '' }) {
 
   let sourceWalletName = '';
   let targetWalletName = '';
+  let updatedSource = null;
+  let updatedTarget = null;
 
   wallets.update((list) => {
     return list.map((w) => {
       if (w.id === fromId) {
         sourceWalletName = w.name;
-        return { ...w, balance: Math.max(0, (Number(w.balance) || 0) - amt) };
+        updatedSource = { ...w, balance: Math.max(0, (Number(w.balance) || 0) - amt) };
+        return updatedSource;
       }
       if (w.id === toId) {
         targetWalletName = w.name;
-        return { ...w, balance: (Number(w.balance) || 0) + amt };
+        updatedTarget = { ...w, balance: (Number(w.balance) || 0) + amt };
+        return updatedTarget;
       }
       return w;
     });
@@ -286,6 +290,13 @@ export function transferFunds({ fromId, toId, amount, note = '' }) {
   };
   transactions.update((txs) => [transferTx, ...txs]);
 
+  // Synchronize to Supabase Cloud
+  import('./supabaseSync.js').then((c) => {
+    if (updatedSource && c?.cloudUpdateWallet) c.cloudUpdateWallet(updatedSource);
+    if (updatedTarget && c?.cloudUpdateWallet) c.cloudUpdateWallet(updatedTarget);
+    if (c?.cloudAddTransaction) c.cloudAddTransaction(transferTx);
+  }).catch(() => {});
+
   return true;
 }
 
@@ -296,17 +307,42 @@ export function addWallet(wallet) {
     balance: Number(wallet.balance) || 0
   };
   wallets.update((list) => [...list, newW]);
+
+  // Synchronize new wallet to Supabase Cloud
+  import('./supabaseSync.js').then((c) => {
+    if (c?.cloudUpdateWallet) c.cloudUpdateWallet(newW);
+  }).catch(() => {});
+
   return newW;
 }
 
 export function updateWallet(id, data) {
+  let updatedW = null;
   wallets.update((list) =>
-    list.map((w) => (w.id === id ? { ...w, ...data, balance: Number(data.balance ?? w.balance) } : w))
+    list.map((w) => {
+      if (w.id === id) {
+        updatedW = { ...w, ...data, balance: Number(data.balance ?? w.balance) };
+        return updatedW;
+      }
+      return w;
+    })
   );
+
+  // Synchronize updated wallet to Supabase Cloud immediately
+  if (updatedW) {
+    import('./supabaseSync.js').then((c) => {
+      if (c?.cloudUpdateWallet) c.cloudUpdateWallet(updatedW);
+    }).catch(() => {});
+  }
 }
 
 export function deleteWallet(id) {
   wallets.update((list) => list.filter((w) => w.id !== id));
+
+  // Synchronize wallet deletion to Supabase Cloud
+  import('./supabaseSync.js').then((c) => {
+    if (c?.cloudDeleteWallet) c.cloudDeleteWallet(id);
+  }).catch(() => {});
 }
 
 // Subscription Operations
@@ -345,14 +381,22 @@ export function paySubscription(id, chosenWalletId = null) {
 
   if (paidSub) {
     const targetWalletId = chosenWalletId || paidSub.walletId;
+    let affectedW = null;
     if (targetWalletId) {
       wallets.update((wList) =>
-        wList.map((w) =>
-          w.id === targetWalletId
-            ? { ...w, balance: Math.max(0, (Number(w.balance) || 0) - paidSub.amount) }
-            : w
-        )
+        wList.map((w) => {
+          if (w.id === targetWalletId) {
+            affectedW = { ...w, balance: Math.max(0, (Number(w.balance) || 0) - paidSub.amount) };
+            return affectedW;
+          }
+          return w;
+        })
       );
+      if (affectedW) {
+        import('./supabaseSync.js').then((c) => {
+          if (c?.cloudUpdateWallet) c.cloudUpdateWallet(affectedW);
+        }).catch(() => {});
+      }
     }
 
     // Log as an expense transaction
@@ -368,6 +412,9 @@ export function paySubscription(id, chosenWalletId = null) {
       notes: `Pembayaran langganan ${paidSub.name} siklus ${paidSub.cycle === 'yearly' ? 'Tahunan' : 'Bulanan'}`
     };
     transactions.update((txs) => [subTx, ...txs]);
+    import('./supabaseSync.js').then((c) => {
+      if (c?.cloudAddTransaction) c.cloudAddTransaction(subTx);
+    }).catch(() => {});
   }
 }
 

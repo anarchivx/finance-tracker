@@ -14,6 +14,7 @@
   import SubscriptionsSection from "$lib/components/SubscriptionsSection.svelte";
   import DebtTrackerSection from "$lib/components/DebtTrackerSection.svelte";
   import ReceiptScanner from "$lib/components/ReceiptScanner.svelte";
+  import ScanReceiptIcon from "$lib/components/ScanReceiptIcon.svelte";
   import SplitBill from "$lib/components/SplitBill.svelte";
   import ExecutiveReport from "$lib/components/ExecutiveReport.svelte";
   import SecurityLock from "$lib/components/SecurityLock.svelte";
@@ -238,7 +239,7 @@
             on:click={() => handleSelectTab("scanner")}
           >
             <div class="tile-icon scan-gradient">
-              <i class="fa-solid fa-camera"></i>
+              <ScanReceiptIcon size={24} animated={true} glow={true} />
             </div>
             <span class="tile-label">Scan Struk</span>
             <span class="tile-desc">OCR Nota AI</span>

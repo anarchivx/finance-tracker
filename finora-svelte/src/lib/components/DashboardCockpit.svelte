@@ -15,6 +15,7 @@
     isPrivacyMode
   } from '../stores.js';
   import AiSmartInput from './AiSmartInput.svelte';
+  import ScanReceiptIcon from './ScanReceiptIcon.svelte';
 
   export let onQuickAdd = (type) => {};
   export let onEditTransaction = (tx) => {};
@@ -484,7 +485,7 @@
       <!-- 1. Scan Struk AI -->
       <button class="dock-app-item" on:click={() => ($activeTab = 'scanner')} title="Buka Kamera Scan Struk OCR">
         <div class="app-icon-squircle cyan">
-          <i class="fa-solid fa-camera-viewfinder"></i>
+          <ScanReceiptIcon size={26} animated={true} glow={true} />
           <span class="app-glow-reflection"></span>
         </div>
         <div class="app-meta">

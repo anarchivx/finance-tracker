@@ -1,6 +1,7 @@
 <script>
   import { activeTab, isPrivacyMode, theme, currency } from '../stores.js';
   import FinoraLogo from './FinoraLogo.svelte';
+  import ScanReceiptIcon from './ScanReceiptIcon.svelte';
 
   export let isOpen = false;
   export let onClose = () => {};
@@ -230,7 +231,11 @@
                   on:click={() => selectFeature(item.id)}
                 >
                   <div class="tile-icon-box" style="background: {item.bg}; color: {item.color};">
-                    <i class="{item.icon}"></i>
+                    {#if item.id === 'scanner'}
+                      <ScanReceiptIcon size={22} animated={false} glow={false} />
+                    {:else}
+                      <i class="{item.icon}"></i>
+                    {/if}
                   </div>
 
                   <div class="tile-info">
