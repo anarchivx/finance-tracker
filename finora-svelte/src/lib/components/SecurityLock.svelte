@@ -86,8 +86,11 @@
   }
 
   function handleBackspace() {
-    pinInput = pinInput.slice(0, -1);
     errorMessage = '';
+    isShaking = false;
+    if (pinInput.length > 0) {
+      pinInput = pinInput.slice(0, -1);
+    }
   }
 
   function performUnlockSuccess() {
@@ -260,16 +263,32 @@
   function handleKeydown(e) {
     if (!isLocked) return;
 
+    // Do NOT intercept keyboard events if the user is typing in any input/textarea
+    // or if the Admin Recovery Modal is open!
+    const target = e.target;
+    const isTyping = target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    );
+    if (showAdminModal || isTyping) {
+      return;
+    }
+
     if (e.key >= '0' && e.key <= '9') {
       e.preventDefault();
       activeKeyIndex = e.key;
       setTimeout(() => (activeKeyIndex = null), 150);
       handleKeyPress(e.key);
-    } else if (e.key === 'Backspace') {
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
       activeKeyIndex = 'backspace';
       setTimeout(() => (activeKeyIndex = null), 150);
       handleBackspace();
+    } else if (e.key === 'Escape') {
+      if (isSettingNewPin && storedPin) {
+        cancelSetup();
+      }
     }
   }
 </script>
@@ -334,8 +353,15 @@
         {/if}
       </div>
 
-      <!-- Glowing Futuristic PIN Indicator Pods -->
-      <div class="dots-wrapper">
+      <!-- Glowing Futuristic PIN Indicator Pods (Click to delete digit) -->
+      <div
+        class="dots-wrapper clickable-dots"
+        on:click={handleBackspace}
+        title="Klik untuk menghapus digit jika salah input"
+        role="button"
+        tabindex="0"
+        on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleBackspace()}
+      >
         {#each [0, 1, 2, 3] as idx}
           {@const isFilled = pinInput.length > idx}
           <div class="pin-capsule-pod" class:filled={isFilled}>
@@ -465,7 +491,19 @@
                   placeholder="Ketik Kode Kunci Administrator..."
                   bind:value={adminRecoveryCode}
                   on:keydown={(e) => e.key === 'Enter' && verifyAdminRecovery()}
+                  autocomplete="off"
+                  spellcheck="false"
                 />
+                {#if adminRecoveryCode}
+                  <button
+                    type="button"
+                    class="btn-clear-code"
+                    on:click={() => { adminRecoveryCode = ''; adminErrorMessage = ''; }}
+                    title="Hapus / Bersihkan Teks Input"
+                  >
+                    <i class="fa-solid fa-circle-xmark"></i>
+                  </button>
+                {/if}
                 <button
                   type="button"
                   class="btn-toggle-eye"
@@ -745,6 +783,21 @@
     justify-content: center;
     gap: 18px;
     margin-bottom: 28px;
+  }
+
+  .dots-wrapper.clickable-dots {
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 999px;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+
+  .dots-wrapper.clickable-dots:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .dots-wrapper.clickable-dots:active {
+    transform: scale(0.96);
   }
 
   .pin-capsule-pod {
@@ -1123,6 +1176,26 @@
   .admin-auth-input:focus {
     border-color: #f59e0b;
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  }
+
+  .btn-clear-code {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .btn-clear-code:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    transform: scale(1.05);
   }
 
   .btn-toggle-eye {

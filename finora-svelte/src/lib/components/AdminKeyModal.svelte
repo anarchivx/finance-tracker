@@ -169,7 +169,19 @@
             placeholder="Ketik kode baru (misal: RAHASIA-2026)..."
             bind:value={newKey}
             on:keydown={(e) => e.key === 'Enter' && handleSaveKey()}
+            autocomplete="off"
+            spellcheck="false"
           />
+          {#if newKey}
+            <button
+              type="button"
+              class="btn-clear-key"
+              on:click={() => { newKey = ''; errorNotice = ''; }}
+              title="Hapus / Reset Teks Input"
+            >
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          {/if}
           <button
             type="button"
             class="btn-eye"
@@ -389,6 +401,26 @@
 
   .key-text.masked {
     color: #64748b;
+  }
+
+  .btn-clear-key {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .btn-clear-key:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    transform: scale(1.05);
   }
 
   .btn-eye {
