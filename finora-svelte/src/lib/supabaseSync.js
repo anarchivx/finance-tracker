@@ -445,6 +445,135 @@ export async function cloudSyncWallets(walletList) {
   }
 }
 
+// ============================================================================
+// BUDGETS CLOUD SYNC
+// ============================================================================
+export async function cloudUpdateBudget(budget) {
+  if (!supabase || !budget) return;
+  try {
+    const payload = {
+      id: String(budget.id || 'b_' + Date.now()),
+      category: String(budget.category).trim(),
+      monthly_limit: Number(budget.monthly_limit) || 0
+    };
+    const { error } = await supabase.from('budgets').upsert(payload, { onConflict: 'category' });
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] update budget exception:', err);
+  }
+}
+
+export async function cloudDeleteBudget(category) {
+  if (!supabase || !category) return;
+  try {
+    const { error } = await supabase.from('budgets').delete().eq('category', String(category).trim());
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] delete budget exception:', err);
+  }
+}
+
+// ============================================================================
+// GOALS CLOUD SYNC
+// ============================================================================
+export async function cloudUpdateGoal(goal) {
+  if (!supabase || !goal) return;
+  try {
+    const payload = {
+      id: String(goal.id || 'g-' + Date.now()),
+      name: String(goal.name || 'Target Finansial').trim(),
+      target_amount: Number(goal.target_amount) || 0,
+      current_amount: Number(goal.current_amount) || 0,
+      deadline: goal.deadline || '',
+      icon: goal.icon || '🎯'
+    };
+    const { error } = await supabase.from('goals').upsert(payload);
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] update goal exception:', err);
+  }
+}
+
+export async function cloudDeleteGoal(id) {
+  if (!supabase || !id) return;
+  try {
+    const { error } = await supabase.from('goals').delete().eq('id', String(id));
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] delete goal exception:', err);
+  }
+}
+
+// ============================================================================
+// SUBSCRIPTIONS CLOUD SYNC
+// ============================================================================
+export async function cloudUpdateSubscription(sub) {
+  if (!supabase || !sub) return;
+  try {
+    const payload = {
+      id: String(sub.id || 'sub-' + Date.now()),
+      name: String(sub.name || 'Langganan').trim(),
+      amount: Number(sub.amount) || 0,
+      cycle: sub.cycle || 'monthly',
+      billing_day: Number(sub.billingDay || sub.billing_day || 1),
+      category: sub.category || 'Hiburan',
+      wallet_id: sub.walletId || sub.wallet_id || '',
+      icon: sub.icon || 'fa-film',
+      color: sub.color || '#2563eb',
+      next_due: sub.nextDue || sub.next_due || '',
+      is_paid_this_month: Boolean(sub.isPaidThisMonth !== undefined ? sub.isPaidThisMonth : sub.is_paid_this_month)
+    };
+    const { error } = await supabase.from('subscriptions').upsert(payload);
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] update subscription exception:', err);
+  }
+}
+
+export async function cloudDeleteSubscription(id) {
+  if (!supabase || !id) return;
+  try {
+    const { error } = await supabase.from('subscriptions').delete().eq('id', String(id));
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] delete subscription exception:', err);
+  }
+}
+
+// ============================================================================
+// DEBTS CLOUD SYNC
+// ============================================================================
+export async function cloudUpdateDebt(debt) {
+  if (!supabase || !debt) return;
+  try {
+    const payload = {
+      id: String(debt.id || 'debt-' + Date.now()),
+      person_name: String(debt.personName || debt.person_name || 'Teman').trim(),
+      type: debt.type || 'receivable',
+      amount: Number(debt.amount) || 0,
+      paid_amount: Number(debt.paidAmount || debt.paid_amount || 0),
+      due_date: debt.dueDate || debt.due_date || '',
+      phone: debt.phoneNumber || debt.phone || '',
+      note: debt.noteText || debt.note || '',
+      status: debt.status || 'unpaid'
+    };
+    const { error } = await supabase.from('debts').upsert(payload);
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] update debt exception:', err);
+  }
+}
+
+export async function cloudDeleteDebt(id) {
+  if (!supabase || !id) return;
+  try {
+    const { error } = await supabase.from('debts').delete().eq('id', String(id));
+    if (!error) lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
+  } catch (err) {
+    console.warn('[Supabase] delete debt exception:', err);
+  }
+}
+
 export async function cloudPushAllLocalToCloud(currentData) {
   if (!supabase) return { success: false, error: 'Supabase client not initialized' };
 

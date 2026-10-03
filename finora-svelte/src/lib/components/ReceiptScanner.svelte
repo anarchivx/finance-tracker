@@ -144,7 +144,7 @@
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          const maxDim = 1500;
+          const maxDim = 1600;
           let width = img.width || 800;
           let height = img.height || 600;
 
@@ -163,15 +163,34 @@
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Get image data to boost contrast & binarize faint thermal text
+          // Advanced contrast, luminance leveling & adaptive thermal binarization
           const imgData = ctx.getImageData(0, 0, width, height);
           const d = imgData.data;
-          const contrast = 1.45; // 45% boost
+
+          // 1. Calculate average luminance across the image
+          let totalLuminance = 0;
+          const totalPixels = d.length / 4;
+          for (let i = 0; i < d.length; i += 4) {
+            totalLuminance += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          }
+          const avgLuminance = totalLuminance / totalPixels;
+
+          // 2. High-contrast enhancement tailored for faint thermal dot-matrix printing
+          const contrast = 1.6; // 60% boost
           const factor = (259 * (contrast * 100 + 255)) / (255 * (259 - contrast * 100));
 
           for (let i = 0; i < d.length; i += 4) {
             const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-            const enhanced = Math.min(255, Math.max(0, factor * (gray - 128) + 128));
+            let enhanced = factor * (gray - 128) + 128;
+
+            // Slight adaptive thresholding: push faint dark text darker, push yellowish paper to pure white
+            if (gray < avgLuminance * 0.88) {
+              enhanced = Math.max(0, enhanced - 35);
+            } else {
+              enhanced = Math.min(255, enhanced + 25);
+            }
+
+            enhanced = Math.min(255, Math.max(0, enhanced));
             d[i] = enhanced;
             d[i + 1] = enhanced;
             d[i + 2] = enhanced;
@@ -191,6 +210,14 @@
   function normalizeOcrArtifacts(text) {
     if (!text) return '';
     return text
+      // Normalise spaced letters in thermal receipts like T O T A L or G R A N D
+      .replace(/T\s*O\s*T\s*A\s*L/gi, 'TOTAL')
+      .replace(/G\s*R\s*A\s*N\s*D/gi, 'GRAND')
+      .replace(/S\s*U\s*B\s*T\s*O\s*T\s*A\s*L/gi, 'SUBTOTAL')
+      .replace(/J\s*U\s*M\s*L\s*A\s*H/gi, 'JUMLAH')
+      .replace(/T\s*A\s*G\s*I\s*H\s*A\s*N/gi, 'TAGIHAN')
+      .replace(/K\s*E\s*M\s*B\s*A\s*L\s*I(?:\s*A\s*N)?/gi, 'KEMBALI')
+      .replace(/T\s*U\s*N\s*A\s*I/gi, 'TUNAI')
       .replace(/\bT[0O]TA[Ll1]\b/gi, 'TOTAL')
       .replace(/\bT[0O]T4[Ll1]\b/gi, 'TOTAL')
       .replace(/\bGR[A4]ND\b/gi, 'GRAND')
@@ -198,8 +225,12 @@
       .replace(/\bT[A4]GIH[A4]N\b/gi, 'TAGIHAN')
       .replace(/\bB[A4]Y[A4]R\b/gi, 'BAYAR')
       .replace(/\bSUBT[0O]T[A4]L\b/gi, 'SUBTOTAL')
-      .replace(/\b[Rr][Pp][.:\s]*/g, 'Rp ')
-      .replace(/(Rp\s*|\b(?:TOTAL|JUMLAH|BAYAR)\s*[:=]?\s*)([0-9OIlBS.,]+)/gi, (match, prefix, numPart) => {
+      .replace(/\bKEMB[A4]LI(?:[A4]N)?\b/gi, 'KEMBALI')
+      .replace(/\b[Rr][Pp][.:\s-]*/g, 'Rp ')
+      // Clean dot leader chains e.g. TOTAL .......... 50.000
+      .replace(/([A-Z]+)\s*[.:·•]{2,}\s*/g, '$1: ')
+      // Fix common OCR number substitutions right after total keywords
+      .replace(/(Rp\s*|\b(?:TOTAL|JUMLAH|BAYAR|KEMBALI|TAGIHAN)\s*[:=]?\s*)([0-9OIlBS.,]+)/gi, (match, prefix, numPart) => {
         const fixedNum = numPart
           .replace(/O/g, '0')
           .replace(/[Il]/g, '1')
@@ -243,7 +274,7 @@
     const lines = cleanText.split('\n').map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return null;
 
-    // 1. Detect Store / Merchant Name
+    // 1. Detect Store / Merchant Name (Extensive Indonesian Retail & Dining Database)
     const knownChains = [
       { pattern: /indomaret\s*(point)?/i, name: 'Indomaret', cat: 'Belanja' },
       { pattern: /alfamart/i, name: 'Alfamart', cat: 'Belanja' },
@@ -251,14 +282,19 @@
       { pattern: /super\s*indo/i, name: 'Super Indo', cat: 'Belanja' },
       { pattern: /hypermart/i, name: 'Hypermart', cat: 'Belanja' },
       { pattern: /transmart|carrefour/i, name: 'Transmart', cat: 'Belanja' },
+      { pattern: /lotte\s*mart/i, name: 'Lotte Mart', cat: 'Belanja' },
+      { pattern: /hero\s*supermarket/i, name: 'Hero Supermarket', cat: 'Belanja' },
       { pattern: /spbu|pertamina/i, name: 'SPBU Pertamina', cat: 'Transportasi' },
       { pattern: /shell/i, name: 'SPBU Shell', cat: 'Transportasi' },
       { pattern: /bp[- ]akr/i, name: 'SPBU BP', cat: 'Transportasi' },
+      { pattern: /vivo\s*energy/i, name: 'SPBU Vivo', cat: 'Transportasi' },
       { pattern: /starbucks/i, name: 'Starbucks Coffee', cat: 'Makanan & Minuman' },
       { pattern: /fore\s*coffee/i, name: 'Fore Coffee', cat: 'Makanan & Minuman' },
       { pattern: /kopi\s*kenangan/i, name: 'Kopi Kenangan', cat: 'Makanan & Minuman' },
       { pattern: /janji\s*jiwa/i, name: 'Kopi Janji Jiwa', cat: 'Makanan & Minuman' },
       { pattern: /point\s*coffee/i, name: 'Point Coffee', cat: 'Makanan & Minuman' },
+      { pattern: /tomoro\s*coffee/i, name: 'Tomoro Coffee', cat: 'Makanan & Minuman' },
+      { pattern: /mixue/i, name: 'Mixue Ice Cream & Tea', cat: 'Makanan & Minuman' },
       { pattern: /lawson/i, name: 'Lawson Station', cat: 'Makanan & Minuman' },
       { pattern: /familymart/i, name: 'FamilyMart', cat: 'Makanan & Minuman' },
       { pattern: /mcdonald|mcd\b/i, name: "McDonald's", cat: 'Makanan & Minuman' },
@@ -267,9 +303,14 @@
       { pattern: /solaria/i, name: 'Solaria Resto', cat: 'Makanan & Minuman' },
       { pattern: /bakmi\s*gm/i, name: 'Bakmi GM', cat: 'Makanan & Minuman' },
       { pattern: /gacoan/i, name: 'Mie Gacoan', cat: 'Makanan & Minuman' },
+      { pattern: /hokben|hoka\s*hoka/i, name: 'HokBen', cat: 'Makanan & Minuman' },
+      { pattern: /richeese/i, name: 'Richeese Factory', cat: 'Makanan & Minuman' },
       { pattern: /j\.?co/i, name: 'J.CO Donuts & Coffee', cat: 'Makanan & Minuman' },
       { pattern: /chatime/i, name: 'Chatime', cat: 'Makanan & Minuman' },
       { pattern: /pizza\s*hut/i, name: 'Pizza Hut', cat: 'Makanan & Minuman' },
+      { pattern: /breadtalk|mako\b/i, name: 'Mako / BreadTalk', cat: 'Makanan & Minuman' },
+      { pattern: /roti[' ]?o/i, name: "Roti'O", cat: 'Makanan & Minuman' },
+      { pattern: /holland\s*bakery/i, name: 'Holland Bakery', cat: 'Makanan & Minuman' },
       { pattern: /apotek\s*k-?24/i, name: 'Apotek K-24', cat: 'Kesehatan' },
       { pattern: /kimia\s*farma/i, name: 'Kimia Farma', cat: 'Kesehatan' },
       { pattern: /guardian/i, name: 'Guardian', cat: 'Kesehatan' },
@@ -289,8 +330,8 @@
     }
 
     if (!detectedStore) {
-      const ignoreHeaderRegex = /selamat datang|terima kasih|struk|nota|receipt|tax invoice|npwp|jl\.|jalan|telp|kasir|cashier|member|pos/i;
-      for (let i = 0; i < Math.min(5, lines.length); i++) {
+      const ignoreHeaderRegex = /selamat datang|terima kasih|struk|nota|receipt|tax invoice|npwp|jl\.|jalan|telp|kasir|cashier|member|pos|shift|terminal/i;
+      for (let i = 0; i < Math.min(6, lines.length); i++) {
         const clean = lines[i].replace(/[^a-zA-Z0-9\s&.-]/g, '').trim();
         if (clean.length >= 3 && !ignoreHeaderRegex.test(clean) && !/\d{5,}/.test(clean)) {
           detectedStore = clean;
@@ -303,11 +344,11 @@
     // 2. Detect Category if not determined
     if (!detectedCategory) {
       const lower = cleanText.toLowerCase();
-      if (/spbu|bensin|pertamax|pertalite|solar|diesel|parkir|toll|bbm/i.test(lower)) {
+      if (/spbu|bensin|pertamax|pertalite|solar|diesel|parkir|toll|bbm|liter|pom/i.test(lower)) {
         detectedCategory = 'Transportasi';
-      } else if (/kopi|coffee|cafe|resto|restoran|makan|minum|food|beverage|nasi|mie|ayam|bakso|burger|tea|ice cream|roti|bakery/i.test(lower)) {
+      } else if (/kopi|coffee|cafe|resto|restoran|makan|minum|food|beverage|nasi|mie|ayam|bakso|burger|tea|ice cream|roti|bakery|snack/i.test(lower)) {
         detectedCategory = 'Makanan & Minuman';
-      } else if (/apotek|obat|farmasi|klinik|hospital|medis|vitamin|capsule|tablet|syrup/i.test(lower)) {
+      } else if (/apotek|obat|farmasi|klinik|hospital|medis|vitamin|capsule|tablet|syrup|paracetamol/i.test(lower)) {
         detectedCategory = 'Kesehatan';
       } else if (/pln|listrik|pulsa|pdam|telkom|indihome|token/i.test(lower)) {
         detectedCategory = 'Tagihan & Utilitas';
@@ -316,13 +357,30 @@
       }
     }
 
-    // 3. Extract Total Amount
-    let detectedTotal = 0;
-    const totalKeywordsRegex = /(?:grand\s*total|total\s*(?:akhir|belanja|bayar|tagihan|transaksi)?|jumlah|tagihan|sub\s*total|harga\s*total|total)\s*[:=]?\s*(?:rp\.?)?\s*([0-9.,]+)/i;
+    // 3. Mathematical Verification (Indonesian Cash/Change Check: Total = Tunai - Kembali)
+    let mathVerifiedTotal = 0;
+    const tunaiMatch = cleanText.match(/(?:tunai|cash|bayar\s*tunai|uang\s*diterima)\s*[:=]?\s*(?:rp\.?)?\s*([0-9.,]+)/i);
+    const kembaliMatch = cleanText.match(/(?:kembali(?:an)?|change|uang\s*kembali)\s*[:=]?\s*(?:rp\.?)?\s*([0-9.,]+)/i);
 
+    if (tunaiMatch && kembaliMatch) {
+      const tunaiVal = parseAmount(tunaiMatch[1]);
+      const kembaliVal = parseAmount(kembaliMatch[1]);
+      if (tunaiVal > kembaliVal && tunaiVal - kembaliVal >= 500) {
+        mathVerifiedTotal = tunaiVal - kembaliVal;
+      }
+    }
+
+    // 4. Extract Total Amount with Strict Filtering (Exclude Tunai / Kembalian / Diskon)
+    let detectedTotal = 0;
+    const nonTotalPrefixRegex = /\b(?:tunai|cash|kembali(?:an)?|change|diskon|discount|hemat|potongan|poin|pajak|tax|ppn)\b/i;
+    const explicitTotalRegex = /(?:grand\s*total|total\s*(?:akhir|belanja|harga|tagihan|transaksi|keseluruhan|pembelian)?|tagihan|sub\s*total)\s*[:=.]*\s*(?:rp\.?)?\s*([0-9.,]+)/i;
+
+    // Pass A: Explicit Total regex on lines that do NOT contain cash/change words
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const match = line.match(totalKeywordsRegex);
+      if (nonTotalPrefixRegex.test(line)) continue;
+
+      const match = line.match(explicitTotalRegex);
       if (match && match[1]) {
         const amt = parseAmount(match[1]);
         if (amt >= 500 && amt <= 100000000) {
@@ -330,7 +388,9 @@
           break;
         }
       }
-      if (/^(?:grand\s*total|total\s*akhir|total\s*belanja|total|jumlah)\s*[:=]?$/i.test(line.trim())) {
+
+      // Check next line if label is alone
+      if (/^(?:grand\s*total|total\s*(?:akhir|belanja|harga|tagihan)?|tagihan)\s*[:=.]*$/i.test(line.trim())) {
         if (i + 1 < lines.length) {
           const nextMatch = lines[i + 1].match(/(?:rp\.?)?\s*([0-9.,]+)/i);
           if (nextMatch) {
@@ -344,11 +404,19 @@
       }
     }
 
-    // Fallback: search highest plausible number in the bottom 60%
+    // Pass B: If math verified total exists and detectedTotal is either 0 or agrees, prioritize math verified
+    if (mathVerifiedTotal > 0) {
+      if (!detectedTotal || Math.abs(detectedTotal - mathVerifiedTotal) <= 200) {
+        detectedTotal = mathVerifiedTotal;
+      }
+    }
+
+    // Pass C: Fallback search in bottom 60% of receipt, skipping cash & change lines
     if (!detectedTotal) {
       const bottomLines = lines.slice(Math.floor(lines.length * 0.4));
       const candidates = [];
       for (const l of bottomLines) {
+        if (nonTotalPrefixRegex.test(l)) continue;
         if (/\b(?:202[0-9]|08[0-9]{8,11})\b/.test(l)) continue;
         const numMatches = l.match(/(?:rp\.?)?\s*([0-9]{1,3}(?:[.,][0-9]{3})+(?:[.,][0-9]{2})?|[0-9]{4,8})/gi);
         if (numMatches) {
@@ -365,7 +433,7 @@
       }
     }
 
-    // 4. Extract Date and Time
+    // 5. Extract Date and Time
     let detectedDate = new Date().toISOString().split('T')[0];
     let detectedTime = new Date().toTimeString().slice(0, 5);
 
@@ -390,13 +458,13 @@
       detectedTime = `${String(timeMatch[1]).padStart(2, '0')}:${String(timeMatch[2]).padStart(2, '0')}`;
     }
 
-    // 5. Payment Method
+    // 6. Payment Method Detection
     let detectedMethod = 'QRIS';
     if (/qris|gopay|ovo|dana|shopeepay|linkaja/i.test(cleanText)) {
       if (/gopay/i.test(cleanText)) detectedMethod = 'GoPay';
       else if (/shopee/i.test(cleanText)) detectedMethod = 'ShopeePay';
       else detectedMethod = 'QRIS';
-    } else if (/tunai|cash|kembalian|uang\s*muka/i.test(cleanText)) {
+    } else if (/tunai|cash|kembali/i.test(cleanText)) {
       detectedMethod = 'Tunai';
     } else if (/kartu\s*kredit|credit\s*card|visa|mastercard/i.test(cleanText)) {
       detectedMethod = 'Kartu Kredit';
@@ -404,19 +472,43 @@
       detectedMethod = 'Bank Transfer';
     }
 
-    // 6. Extract Line Items
+    // 7. Multi-Line & Single-Line Item Extraction
     const items = [];
-    const lineIgnoreRegex = /total|subtotal|kembali|tunai|cash|debit|pajak|tax|ppn|diskon|discount|terima\s*kasih|kasir|struk|member|poin/i;
+    const lineIgnoreRegex = /total|subtotal|kembali|tunai|cash|debit|pajak|tax|ppn|diskon|discount|terima\s*kasih|kasir|struk|member|poin|antrian|meja|guest/i;
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       if (lineIgnoreRegex.test(line)) continue;
-      const itemMatch = line.match(/^([a-zA-Z0-9\s&.+/'-]{3,35})\s+(?:(\d+)\s*[xX]\s*)?(?:rp\.?)?\s*([0-9]{1,3}(?:[.,][0-9]{3})+|[0-9]{4,7})$/i);
-      if (itemMatch) {
-        const name = itemMatch[1].trim();
-        const qty = itemMatch[2] ? parseInt(itemMatch[2], 10) : 1;
-        const price = parseAmount(itemMatch[3]);
+
+      // Pattern 1: Single Line "Item Name 15.000" or "Item Name 2 x 5.000 10.000"
+      const singleMatch = line.match(/^([a-zA-Z0-9\s&.+/'-]{3,35})\s+(?:(\d+)\s*[xX*]\s*)?(?:rp\.?)?\s*([0-9]{1,3}(?:[.,][0-9]{3})+|[0-9]{4,7})$/i);
+      if (singleMatch) {
+        const name = singleMatch[1].trim();
+        const qty = singleMatch[2] ? parseInt(singleMatch[2], 10) : 1;
+        const price = parseAmount(singleMatch[3]);
         if (price > 0 && name.length >= 3 && !/^\d+$/.test(name)) {
           items.push({ name, qty: qty || 1, price: Math.round(price / (qty || 1)) });
+          continue;
+        }
+      }
+
+      // Pattern 2: Two-Line Item Format (Common in Indomaret / Alfamart / Cafes)
+      // Line i: "AQUA AIR MINERAL 600ML"
+      // Line i+1: "2 x 3.500     7.000" or "2 PCS  7.000"
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1];
+        const nextMatch = nextLine.match(/^(?:(\d+)\s*(?:[xX*]|pcs|btl|cup|porsi)\s*(?:[0-9.,]+)?\s+)?(?:rp\.?)?\s*([0-9]{1,3}(?:[.,][0-9]{3})+|[0-9]{4,7})$/i);
+        if (nextMatch) {
+          const cleanName = line.replace(/[^a-zA-Z0-9\s&.+/'-]/g, '').trim();
+          if (cleanName.length >= 3 && !lineIgnoreRegex.test(cleanName) && !/^\d+$/.test(cleanName)) {
+            const qty = nextMatch[1] ? parseInt(nextMatch[1], 10) : 1;
+            const price = parseAmount(nextMatch[2]);
+            if (price > 0) {
+              items.push({ name: cleanName, qty: qty || 1, price: Math.round(price / (qty || 1)) });
+              i++; // skip next line as it was consumed
+              continue;
+            }
+          }
         }
       }
     }
@@ -428,7 +520,7 @@
       date: detectedDate,
       time: detectedTime,
       method: detectedMethod,
-      items: items.slice(0, 10),
+      items: items.slice(0, 15),
       rawText: cleanText
     };
   }

@@ -4,7 +4,11 @@ import {
   cloudAddTransaction,
   cloudUpdateTransaction,
   cloudDeleteTransaction,
-  cloudUpdateWallet
+  cloudUpdateWallet,
+  cloudUpdateBudget,
+  cloudDeleteBudget,
+  cloudUpdateGoal,
+  cloudDeleteGoal
 } from './supabaseSync.js';
 
 let socket = null;
@@ -310,19 +314,21 @@ export function emitUpdateBudget(category, limit) {
   return new Promise((resolve) => {
     const trimmedCat = (category || '').trim();
     const numLimit = Number(limit) || 0;
+    let targetBudget = null;
 
     budgets.update((list) => {
       const idx = list.findIndex((b) => b.category.toLowerCase().trim() === trimmedCat.toLowerCase());
       if (idx >= 0) {
-        list[idx] = { ...list[idx], monthly_limit: numLimit };
+        targetBudget = { ...list[idx], monthly_limit: numLimit };
+        list[idx] = targetBudget;
         return [...list];
       } else {
-        const newBudget = {
+        targetBudget = {
           id: 'b_' + Date.now(),
           category: trimmedCat,
           monthly_limit: numLimit
         };
-        return [...list, newBudget];
+        return [...list, targetBudget];
       }
     });
 
@@ -332,6 +338,11 @@ export function emitUpdateBudget(category, limit) {
       socket.emit('budget:update', { category: trimmedCat, limit: numLimit }, (res) => resolve(res));
     } else {
       resolve({ success: true, local: true });
+    }
+
+    // Sync to Supabase Cloud
+    if (targetBudget) {
+      cloudUpdateBudget(targetBudget);
     }
 
     const targetUrl = getServerUrl();
@@ -355,6 +366,9 @@ export function emitDeleteBudget(category) {
       resolve({ success: true, local: true });
     }
 
+    // Sync deletion to Supabase Cloud
+    cloudDeleteBudget(trimmedCat);
+
     const targetUrl = getServerUrl();
     fetch(`${targetUrl}/api/budgets/${encodeURIComponent(trimmedCat)}`, { method: 'DELETE' }).catch(() => {});
   });
@@ -362,9 +376,13 @@ export function emitDeleteBudget(category) {
 
 export function emitDepositGoal(id, amount) {
   return new Promise((resolve) => {
+    let updatedGoal = null;
     goals.update((list) => {
       const g = list.find((item) => String(item.id) === String(id));
-      if (g) g.current_amount = (Number(g.current_amount) || 0) + Number(amount);
+      if (g) {
+        g.current_amount = (Number(g.current_amount) || 0) + Number(amount);
+        updatedGoal = { ...g };
+      }
       return [...list];
     });
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
@@ -373,6 +391,11 @@ export function emitDepositGoal(id, amount) {
       socket.emit('goal:deposit', { id, amount: Number(amount) }, (res) => resolve(res));
     } else {
       resolve({ success: true, local: true });
+    }
+
+    // Sync to Supabase Cloud
+    if (updatedGoal) {
+      cloudUpdateGoal(updatedGoal);
     }
 
     const targetUrl = getServerUrl();
@@ -396,6 +419,9 @@ export function emitAddGoal(goalData) {
       resolve({ success: true, data: newG, local: true });
     }
 
+    // Sync to Supabase Cloud
+    cloudUpdateGoal(newG);
+
     const targetUrl = getServerUrl();
     fetch(`${targetUrl}/api/goals`, {
       method: 'POST',
@@ -407,10 +433,12 @@ export function emitAddGoal(goalData) {
 
 export function emitUpdateGoal(id, goalData) {
   return new Promise((resolve) => {
+    let updatedG = null;
     goals.update((list) => {
       const idx = list.findIndex((g) => String(g.id) === String(id));
       if (idx >= 0) {
-        list[idx] = { ...list[idx], ...goalData };
+        updatedG = { ...list[idx], ...goalData };
+        list[idx] = updatedG;
         return [...list];
       }
       return list;
@@ -421,6 +449,11 @@ export function emitUpdateGoal(id, goalData) {
       socket.emit('goal:update', { id, goalData }, (res) => resolve(res));
     } else {
       resolve({ success: true, local: true });
+    }
+
+    // Sync to Supabase Cloud
+    if (updatedG) {
+      cloudUpdateGoal(updatedG);
     }
 
     const targetUrl = getServerUrl();
@@ -442,6 +475,9 @@ export function emitDeleteGoal(id) {
     } else {
       resolve({ success: true, local: true });
     }
+
+    // Sync to Supabase Cloud
+    cloudDeleteGoal(id);
 
     const targetUrl = getServerUrl();
     fetch(`${targetUrl}/api/goals/${id}`, { method: 'DELETE' }).catch(() => {});

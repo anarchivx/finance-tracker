@@ -354,17 +354,42 @@ export function addSubscription(sub) {
     isPaidThisMonth: false
   };
   subscriptions.update((list) => [...list, newSub]);
+
+  // Synchronize new subscription to Supabase Cloud
+  import('./supabaseSync.js').then((c) => {
+    if (c?.cloudUpdateSubscription) c.cloudUpdateSubscription(newSub);
+  }).catch(() => {});
+
   return newSub;
 }
 
 export function updateSubscription(id, subData) {
+  let updatedSub = null;
   subscriptions.update((list) =>
-    list.map((s) => (s.id === id ? { ...s, ...subData, amount: Number(subData.amount ?? s.amount) } : s))
+    list.map((s) => {
+      if (s.id === id) {
+        updatedSub = { ...s, ...subData, amount: Number(subData.amount ?? s.amount) };
+        return updatedSub;
+      }
+      return s;
+    })
   );
+
+  // Synchronize subscription edit to Supabase Cloud
+  if (updatedSub) {
+    import('./supabaseSync.js').then((c) => {
+      if (c?.cloudUpdateSubscription) c.cloudUpdateSubscription(updatedSub);
+    }).catch(() => {});
+  }
 }
 
 export function deleteSubscription(id) {
   subscriptions.update((list) => list.filter((s) => s.id !== id));
+
+  // Synchronize subscription deletion to Supabase Cloud
+  import('./supabaseSync.js').then((c) => {
+    if (c?.cloudDeleteSubscription) c.cloudDeleteSubscription(id);
+  }).catch(() => {});
 }
 
 export function paySubscription(id, chosenWalletId = null) {
@@ -414,6 +439,7 @@ export function paySubscription(id, chosenWalletId = null) {
     transactions.update((txs) => [subTx, ...txs]);
     import('./supabaseSync.js').then((c) => {
       if (c?.cloudAddTransaction) c.cloudAddTransaction(subTx);
+      if (c?.cloudUpdateSubscription) c.cloudUpdateSubscription(paidSub);
     }).catch(() => {});
   }
 }
@@ -428,25 +454,45 @@ export function addDebt(debt) {
     status: (Number(debt.paidAmount) || 0) >= (Number(debt.amount) || 0) ? 'paid' : (Number(debt.paidAmount) || 0) > 0 ? 'partial' : 'unpaid'
   };
   debts.update((list) => [...list, newD]);
+
+  // Synchronize new debt to Supabase Cloud
+  import('./supabaseSync.js').then((c) => {
+    if (c?.cloudUpdateDebt) c.cloudUpdateDebt(newD);
+  }).catch(() => {});
+
   return newD;
 }
 
 export function updateDebt(id, debtData) {
+  let updatedD = null;
   debts.update((list) =>
     list.map((d) => {
       if (d.id === id) {
         const amt = Number(debtData.amount ?? d.amount);
         const paid = Number(debtData.paidAmount ?? d.paidAmount);
         const st = paid >= amt ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
-        return { ...d, ...debtData, amount: amt, paidAmount: paid, status: st };
+        updatedD = { ...d, ...debtData, amount: amt, paidAmount: paid, status: st };
+        return updatedD;
       }
       return d;
     })
   );
+
+  // Synchronize debt edit to Supabase Cloud
+  if (updatedD) {
+    import('./supabaseSync.js').then((c) => {
+      if (c?.cloudUpdateDebt) c.cloudUpdateDebt(updatedD);
+    }).catch(() => {});
+  }
 }
 
 export function deleteDebt(id) {
   debts.update((list) => list.filter((d) => d.id !== id));
+
+  // Synchronize debt deletion to Supabase Cloud
+  import('./supabaseSync.js').then((c) => {
+    if (c?.cloudDeleteDebt) c.cloudDeleteDebt(id);
+  }).catch(() => {});
 }
 
 export function recordDebtPayment(id, paymentAmount, walletId = null) {
@@ -470,6 +516,7 @@ export function recordDebtPayment(id, paymentAmount, walletId = null) {
     // If it's a receivable (someone repaid us), our wallet balance increases (income)
     // If it's a payable (we paid back), our wallet balance decreases (expense)
     const isReceivable = updatedD.type === 'receivable';
+    let affectedW = null;
 
     if (walletId) {
       wallets.update((wList) =>
@@ -477,7 +524,8 @@ export function recordDebtPayment(id, paymentAmount, walletId = null) {
           if (w.id === walletId) {
             const currentBal = Number(w.balance) || 0;
             const newBal = isReceivable ? currentBal + payAmt : Math.max(0, currentBal - payAmt);
-            return { ...w, balance: newBal };
+            affectedW = { ...w, balance: newBal };
+            return affectedW;
           }
           return w;
         })
@@ -499,6 +547,13 @@ export function recordDebtPayment(id, paymentAmount, walletId = null) {
       notes: `${updatedD.note ? updatedD.note + ' - ' : ''}Cicilan/Pelunasan (Sisa: Rp ${Math.max(0, updatedD.amount - updatedD.paidAmount).toLocaleString('id-ID')})`
     };
     transactions.update((txs) => [debtTx, ...txs]);
+
+    // Synchronize to Supabase Cloud
+    import('./supabaseSync.js').then((c) => {
+      if (c?.cloudUpdateDebt) c.cloudUpdateDebt(updatedD);
+      if (affectedW && c?.cloudUpdateWallet) c.cloudUpdateWallet(affectedW);
+      if (c?.cloudAddTransaction) c.cloudAddTransaction(debtTx);
+    }).catch(() => {});
   }
 }
 
