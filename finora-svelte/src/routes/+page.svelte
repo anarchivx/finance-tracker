@@ -52,22 +52,24 @@
 
   onMount(() => {
     if (browser) {
-      const isPinDisabled = localStorage.getItem("finora_pin_enabled") === "false";
-      const isDeviceRemembered = localStorage.getItem("finora_device_unlocked") === "true";
+      // Bersihkan flag bypass lawas agar setiap akses URL baru selalu terproteksi
+      localStorage.removeItem("finora_device_unlocked");
+      localStorage.removeItem("finora_pin_enabled");
+
       const isSessionUnlocked = sessionStorage.getItem("finora_session_unlocked") === "true";
       const lastUnlocked = Number(localStorage.getItem("finora_last_unlocked_at") || "0");
       const lastGlobalLock = Number(localStorage.getItem("finora_last_global_lock") || "0");
 
       if (lastGlobalLock > 0 && lastGlobalLock > lastUnlocked) {
-        // Global lock was triggered across devices after this device was last unlocked
+        // Kunci global terpicu di perangkat lain atau sebelumnya
         isAppLocked = true;
         sessionStorage.removeItem("finora_session_unlocked");
-        localStorage.removeItem("finora_device_unlocked");
-      } else if (isPinDisabled || isDeviceRemembered || isSessionUnlocked) {
+      } else if (isSessionUnlocked && lastUnlocked >= lastGlobalLock) {
+        // Hanya buka jika tab sesi browser ini sedang aktif dan telah memasukkan PIN
         isAppLocked = false;
       } else {
         const hasPin = localStorage.getItem("finora_security_pin");
-        isAppLocked = !!hasPin; // Hanya kunci jika pengguna memang sudah pernah membuat PIN
+        isAppLocked = !!hasPin; // Selalu kunci setiap kali URL dibuka
       }
 
       // Universal handler for incoming remote lock events (Supabase, Socket.IO, BroadcastChannel)

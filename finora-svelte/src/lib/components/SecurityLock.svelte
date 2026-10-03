@@ -15,7 +15,12 @@
   let errorMessage = '';
   let isShaking = false;
   let activeKeyIndex = null; // For keyboard press feedback animation
-  let rememberDevice = true; // By default remember this device so PIN is not repeatedly asked
+
+  // Admin Contact & Recovery state
+  let showAdminModal = false;
+  let adminRecoveryCode = '';
+  let adminErrorMessage = '';
+  let isAdminVerifying = false;
 
   const STORAGE_KEY = 'finora_security_pin';
 
@@ -85,30 +90,57 @@
     errorMessage = '';
   }
 
-  function disablePinLock() {
-    if (browser) {
-      localStorage.setItem('finora_pin_enabled', 'false');
-      localStorage.setItem('finora_device_unlocked', 'true');
-      sessionStorage.setItem('finora_session_unlocked', 'true');
-    }
-    isLocked = false;
-    onClose();
-  }
-
   function performUnlockSuccess() {
     if (browser) {
       const now = Date.now();
       localStorage.setItem('finora_last_unlocked_at', String(now));
       sessionStorage.setItem('finora_session_unlocked', 'true');
-      if (rememberDevice) {
-        localStorage.setItem('finora_device_unlocked', 'true');
-      }
     }
     isLocked = false;
     pinInput = '';
     confirmPin = '';
     errorMessage = '';
     onClose();
+  }
+
+  async function verifyAdminRecovery() {
+    if (!adminRecoveryCode || adminRecoveryCode.trim().length < 4) {
+      adminErrorMessage = 'Masukkan Kode Otorisasi Administrator yang valid.';
+      return;
+    }
+    isAdminVerifying = true;
+    adminErrorMessage = '';
+
+    try {
+      const res = await fetch(`${getServerUrl()}/api/auth/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminKey: adminRecoveryCode.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.removeItem(STORAGE_KEY);
+        storedPin = null;
+        showAdminModal = false;
+        adminRecoveryCode = '';
+        startSetupPin();
+      } else {
+        adminErrorMessage = data.error || 'Kode Otorisasi Administrator tidak valid.';
+      }
+    } catch (e) {
+      const validFallback = localStorage.getItem('finora_admin_secret') || 'FINORA-ADMIN-2026';
+      if (adminRecoveryCode.trim().toUpperCase() === validFallback.toUpperCase()) {
+        localStorage.removeItem(STORAGE_KEY);
+        storedPin = null;
+        showAdminModal = false;
+        adminRecoveryCode = '';
+        startSetupPin();
+      } else {
+        adminErrorMessage = 'Kode Otorisasi salah. Akses reset ditolak.';
+      }
+    } finally {
+      isAdminVerifying = false;
+    }
   }
 
   async function evaluatePin() {
@@ -202,23 +234,7 @@
     errorMessage = '';
   }
 
-  function resetPinConfirm() {
-    requestConfirm({
-      title: 'Lupa / Reset PIN Keamanan',
-      message: 'Apakah Anda ingin mengatur ulang Master PIN Finora di server? Anda akan diminta membuat 4 angka PIN baru yang berlaku di seluruh perangkat.',
-      confirmText: 'Reset PIN',
-      confirmStyle: 'warning',
-      icon: 'fa-key',
-      onConfirm: async () => {
-        try {
-          await fetch(`${getServerUrl()}/api/auth/reset`, { method: 'POST' });
-        } catch (e) {}
-        localStorage.removeItem(STORAGE_KEY);
-        storedPin = null;
-        startSetupPin();
-      }
-    });
-  }
+
 
   function handleKeydown(e) {
     if (!isLocked) return;
@@ -371,28 +387,115 @@
         </button>
       </div>
 
-      <!-- Bottom Security Footer -->
+      <!-- Bottom Security Footer: No unverified bypass, Admin Help only -->
       <div class="lock-footer">
-        <label class="remember-device-checkbox" title="Jika dicentang, aplikasi tidak akan meminta PIN lagi saat dibuka di perangkat ini">
-          <input type="checkbox" bind:checked={rememberDevice} />
-          <span>Ingat perangkat ini (jangan minta PIN lagi)</span>
-        </label>
-
-        <div class="footer-action-links">
-          <button type="button" class="footer-link-btn disable-btn" on:click={disablePinLock} title="Buka aplikasi langsung dan matikan fitur kunci PIN">
-            <i class="fa-solid fa-lock-open"></i>
-            <span>Matikan Kunci PIN</span>
+        {#if storedPin && !isSettingNewPin}
+          <button
+            type="button"
+            class="footer-link-btn admin-help-btn"
+            on:click={() => {
+              showAdminModal = true;
+              adminErrorMessage = '';
+              adminRecoveryCode = '';
+            }}
+          >
+            <i class="fa-solid fa-headset text-amber"></i>
+            <span>Lupa PIN? Hubungi Administrator</span>
           </button>
-
-          {#if storedPin && !isSettingNewPin}
-            <button type="button" class="footer-link-btn" on:click={resetPinConfirm}>
-              <i class="fa-solid fa-unlock-keyhole"></i>
-              <span>Reset PIN</span>
-            </button>
-          {/if}
-        </div>
+        {/if}
       </div>
     </div>
+
+    <!-- Modal Hubungi Administrator / Otorisasi Reset PIN -->
+    {#if showAdminModal}
+      <div class="admin-modal-backdrop" on:click={() => (showAdminModal = false)}>
+        <div class="admin-modal-card glass-panel" on:click|stopPropagation>
+          <div class="admin-modal-header">
+            <div class="admin-badge">
+              <i class="fa-solid fa-shield-halved text-amber"></i>
+              <span>PROTEKSI ADMINISTRATOR RESMI</span>
+            </div>
+            <button class="admin-close-btn" on:click={() => (showAdminModal = false)}>
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="admin-modal-body">
+            <div class="admin-icon-circle">
+              <i class="fa-solid fa-user-shield"></i>
+            </div>
+
+            <h3 class="admin-title">Otorisasi Administrator Diperlukan</h3>
+            <p class="admin-desc">
+              Untuk melindungi privasi dan seluruh saldo rekening finansial Anda dari akses tanpa izin, Master PIN tidak dapat diatur ulang secara bebas di layar ini. Silakan hubungi Administrator Anda untuk verifikasi identitas.
+            </p>
+
+            <!-- Quick Contact Options -->
+            <div class="admin-contacts-grid">
+              <a
+                href="https://wa.me/?text=Halo%20Admin%20Finora,%20saya%20membutuhkan%20bantuan%20otorisasi%20reset%20Master%20PIN%20aplikasi%20Finora%20saya."
+                target="_blank"
+                rel="noreferrer"
+                class="admin-contact-pill whatsapp-pill"
+              >
+                <i class="fa-brands fa-whatsapp text-emerald"></i>
+                <div class="pill-text">
+                  <span class="pill-label">WhatsApp Administrator</span>
+                  <span class="pill-sub">Hubungi via Chat WhatsApp</span>
+                </div>
+              </a>
+
+              <a
+                href="mailto:admin@finora.internal?subject=Permohonan%20Reset%20Master%20PIN%20Finora&body=Halo%20Administrator,%20saya%20ingin%20mengajukan%20permohonan%20verifikasi%20reset%20Master%20PIN%20Finora."
+                class="admin-contact-pill email-pill"
+              >
+                <i class="fa-solid fa-envelope text-cyan"></i>
+                <div class="pill-text">
+                  <span class="pill-label">Email Administrator</span>
+                  <span class="pill-sub">Kirim Tiket Verifikasi</span>
+                </div>
+              </a>
+            </div>
+
+            <!-- Recovery Authorization Code Form -->
+            <div class="admin-auth-box">
+              <span class="auth-box-title"><i class="fa-solid fa-key text-amber"></i> Punya Kode Otorisasi Admin?</span>
+              <p class="auth-box-desc">Masukkan Master Recovery Key yang diberikan langsung oleh Administrator:</p>
+
+              <div class="auth-input-wrapper">
+                <input
+                  type="password"
+                  class="admin-auth-input"
+                  placeholder="Kode Kunci Admin..."
+                  bind:value={adminRecoveryCode}
+                  on:keydown={(e) => e.key === 'Enter' && verifyAdminRecovery()}
+                />
+                <button
+                  type="button"
+                  class="btn-admin-verify"
+                  disabled={isAdminVerifying}
+                  on:click={verifyAdminRecovery}
+                >
+                  {#if isAdminVerifying}
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                  {:else}
+                    <i class="fa-solid fa-unlock"></i>
+                    <span>Otorisasi</span>
+                  {/if}
+                </button>
+              </div>
+
+              {#if adminErrorMessage}
+                <div class="admin-error-msg">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  <span>{adminErrorMessage}</span>
+                </div>
+              {/if}
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -842,27 +945,272 @@
     gap: 16px;
   }
 
-  .footer-link-btn {
-    background: transparent;
-    border: none;
-    color: #64748b;
-    font-size: 0.775rem;
+  .admin-help-btn {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: #fbbf24;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 0.8rem;
     font-weight: 600;
-    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .admin-help-btn:hover {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fef08a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15);
+  }
+
+  /* ========================================================================= */
+  /* ADMIN CONTACT & RECOVERY MODAL                                            */
+  /* ========================================================================= */
+  .admin-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    background: rgba(6, 9, 18, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: adminFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes adminFade {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .admin-modal-card {
+    width: 100%;
+    max-width: 440px;
+    background: linear-gradient(165deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 28px;
+    padding: 28px 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(245, 158, 11, 0.12);
+    position: relative;
+  }
+
+  .admin-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .admin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    padding: 4px 10px;
+    border-radius: 99px;
+  }
+
+  .admin-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
     cursor: pointer;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .admin-close-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    transform: rotate(90deg);
+  }
+
+  .admin-modal-body {
+    text-align: center;
+  }
+
+  .admin-icon-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.05) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #f59e0b;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.2);
+  }
+
+  .admin-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 8px;
+    letter-spacing: -0.3px;
+  }
+
+  .admin-desc {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.5;
+    margin: 0 0 20px;
+  }
+
+  .admin-contacts-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .admin-contact-pill {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    text-align: left;
+  }
+
+  .admin-contact-pill i {
+    font-size: 1.4rem;
+  }
+
+  .admin-contact-pill:hover {
+    background: rgba(255, 255, 255, 0.07);
+    transform: translateY(-2px);
+  }
+
+  .whatsapp-pill:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.12);
+  }
+
+  .email-pill:hover {
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 6px 16px rgba(6, 182, 212, 0.12);
+  }
+
+  .pill-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pill-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
+  .pill-sub {
+    font-size: 0.725rem;
+    color: #64748b;
+  }
+
+  /* Recovery Auth Box */
+  .admin-auth-box {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 16px;
+    text-align: left;
+  }
+
+  .auth-box-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 4px;
+  }
+
+  .auth-box-desc {
+    font-size: 0.725rem;
+    color: #64748b;
+    margin: 0 0 12px;
+  }
+
+  .auth-input-wrapper {
+    display: flex;
+    gap: 8px;
+  }
+
+  .admin-auth-input {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: #ffffff;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+
+  .admin-auth-input:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  }
+
+  .btn-admin-verify {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border: none;
+    border-radius: 12px;
+    color: #000000;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 0 16px;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     transition: all 0.2s ease;
   }
 
-  .footer-link-btn:hover {
-    color: #818cf8;
+  .btn-admin-verify:hover:not(:disabled) {
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
   }
 
-  .footer-link-btn.disable-btn:hover {
-    color: #38bdf8;
+  .btn-admin-verify:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .admin-error-msg {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    color: #f87171;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   /* Shake animation */

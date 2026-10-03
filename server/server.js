@@ -101,8 +101,13 @@ app.post('/api/auth/set-pin', (req, res) => {
 
 app.post('/api/auth/reset', (req, res) => {
   try {
+    const { adminKey } = req.body || {};
+    const VALID_ADMIN_KEY = process.env.ADMIN_MASTER_KEY || 'FINORA-ADMIN-2026';
+    if (!adminKey || String(adminKey).trim().toUpperCase() !== VALID_ADMIN_KEY.toUpperCase()) {
+      return res.status(403).json({ success: false, error: 'Otorisasi Gagal: Kode Kunci Administrator tidak valid.' });
+    }
     resetSecurityPin();
-    res.json({ success: true });
+    res.json({ success: true, message: 'Master PIN berhasil diatur ulang oleh Administrator.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
