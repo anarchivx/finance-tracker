@@ -1,6 +1,6 @@
 <script>
   import { browser } from '$app/environment';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import { cloudSaveAdminKey, cloudGetAdminKey } from '$lib/supabaseSync.js';
 
@@ -38,6 +38,22 @@
     } catch (e) {}
   }
 
+  onMount(() => {
+    if (browser) {
+      window._handleAdminKeySync = (syncedKey) => {
+        if (syncedKey) {
+          currentKey = syncedKey;
+        }
+      };
+    }
+  });
+
+  onDestroy(() => {
+    if (browser && window._handleAdminKeySync) {
+      window._handleAdminKeySync = null;
+    }
+  });
+
   $: if (browser && isOpen) {
     loadCurrentKey();
     newKey = '';
@@ -73,11 +89,11 @@
         body: JSON.stringify({ newAdminKey: cleanKey })
       }).catch(() => {});
 
-      successNotice = 'Kode Otorisasi Administrator berhasil diperbarui!';
+      successNotice = 'Kode Otorisasi Administrator berhasil diperbarui & otomatis tersinkron ke seluruh perangkat!';
       newKey = '';
       setTimeout(() => {
         successNotice = '';
-      }, 3500);
+      }, 4000);
     } catch (err) {
       errorNotice = 'Gagal menyimpan: ' + (err.message || 'Terjadi kesalahan');
     } finally {
@@ -153,6 +169,11 @@
           >
             <i class={showCurrentKey ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"}></i>
           </button>
+        </div>
+
+        <div class="sync-status-indicator">
+          <i class="fa-solid fa-cloud-arrow-up text-emerald"></i>
+          <span>Tersinkronisasi Real-Time ke Seluruh Perangkat via Cloud</span>
         </div>
       </div>
 
@@ -337,6 +358,20 @@
     border-radius: 16px;
     padding: 14px 16px;
     margin-bottom: 20px;
+  }
+
+  .sync-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 5px 12px;
+    border-radius: 99px;
   }
 
   .box-label-row {

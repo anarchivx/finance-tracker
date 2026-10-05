@@ -195,6 +195,23 @@ export async function pullAllFromCloud() {
       // Table might not exist yet if migration hasn't been executed
     }
 
+    // 8. Pull updated Master Recovery Admin Key across devices
+    try {
+      const { data: adminKeyData, error: aErr } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'admin_master_key')
+        .maybeSingle();
+
+      if (!aErr && adminKeyData && adminKeyData.value) {
+        const syncedKey = String(adminKeyData.value).trim();
+        localStorage.setItem('finora_admin_secret', syncedKey);
+        if (typeof window !== 'undefined' && window._handleAdminKeySync) {
+          window._handleAdminKeySync(syncedKey);
+        }
+      }
+    } catch (e) {}
+
     lastSyncTime.set(new Date().toLocaleTimeString('id-ID'));
   } catch (err) {
     console.warn('[Supabase] Pull error:', err);
@@ -220,13 +237,32 @@ function setupRealtimeSubscription() {
         window._handleGlobalLock(ts);
       }
     })
-    // GLOBAL SECURITY LOCK (Database Change listener)
+    // ADMIN MASTER RECOVERY KEY (Realtime Broadcast across all active devices)
+    .on('broadcast', { event: 'admin_key_updated' }, (payload) => {
+      const newKey = payload?.payload?.adminKey;
+      if (newKey) {
+        const cleanKey = String(newKey).trim();
+        localStorage.setItem('finora_admin_secret', cleanKey);
+        if (typeof window !== 'undefined' && window._handleAdminKeySync) {
+          window._handleAdminKeySync(cleanKey);
+        }
+      }
+    })
+    // GLOBAL SECURITY & SETTINGS (Database Change listener)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload) => {
       const rec = payload?.new;
       if (rec && rec.key === 'last_global_lock') {
         const ts = Number(rec.value) || Date.now();
         if (typeof window !== 'undefined' && window._handleGlobalLock) {
           window._handleGlobalLock(ts);
+        }
+      } else if (rec && rec.key === 'admin_master_key') {
+        const newKey = String(rec.value).trim();
+        if (newKey) {
+          localStorage.setItem('finora_admin_secret', newKey);
+          if (typeof window !== 'undefined' && window._handleAdminKeySync) {
+            window._handleAdminKeySync(newKey);
+          }
         }
       }
     })
@@ -692,14 +728,27 @@ export async function cloudBroadcastGlobalLock(timestamp = Date.now()) {
 }
 
 /**
- * Persist Custom Admin Authorization Key to Supabase Cloud
+ * Persist & Broadcast Custom Admin Authorization Key across all devices in real-time
  */
 export async function cloudSaveAdminKey(adminKey) {
   if (!supabase || !adminKey) return;
+  const cleanKey = String(adminKey).trim();
+  if (!cleanKey) return;
+
   try {
+    // 1. Broadcast immediately to all connected devices via Supabase Realtime
+    if (realtimeChannel) {
+      await realtimeChannel.send({
+        type: 'broadcast',
+        event: 'admin_key_updated',
+        payload: { adminKey: cleanKey, timestamp: Date.now() }
+      });
+    }
+
+    // 2. Persist to app_settings table in Supabase Cloud
     await supabase.from('app_settings').upsert({
       key: 'admin_master_key',
-      value: String(adminKey).trim(),
+      value: cleanKey,
       updated_at: new Date().toISOString()
     }, { onConflict: 'key' });
   } catch (err) {

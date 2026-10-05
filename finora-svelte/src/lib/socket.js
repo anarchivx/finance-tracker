@@ -129,6 +129,18 @@ export function initSocket() {
           window._handleGlobalLock(ts);
         }
       });
+
+      // SECURITY ADMIN RECOVERY KEY: Realtime listener across all devices
+      socket.on('security:admin_key_updated', (payload) => {
+        const key = payload?.adminKey;
+        if (key) {
+          const cleanKey = String(key).trim();
+          localStorage.setItem('finora_admin_secret', cleanKey);
+          if (typeof window !== 'undefined' && window._handleAdminKeySync) {
+            window._handleAdminKeySync(cleanKey);
+          }
+        }
+      });
     }
   } catch (e) {
     console.warn('[Socket.IO] Error initializing socket:', e);

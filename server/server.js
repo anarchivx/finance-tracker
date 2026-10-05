@@ -121,6 +121,8 @@ app.post('/api/auth/set-admin-key', (req, res) => {
       return res.status(400).json({ success: false, error: 'Kode Admin minimal 4 karakter.' });
     }
     currentAdminMasterKey = String(newAdminKey).trim();
+    // Broadcast to all connected clients via Socket.IO
+    io.emit('security:admin_key_updated', { adminKey: currentAdminMasterKey, timestamp: Date.now() });
     res.json({ success: true, message: 'Kode Otorisasi Administrator berhasil diperbarui.' });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -63,6 +63,17 @@
     step = 1;
   }
 
+  // Reactive: Tarik kunci otorisasi admin terbaru dari cloud setiap kali modal admin dibuka
+  $: if (browser && showAdminModal) {
+    import('$lib/supabaseSync.js').then(({ cloudGetAdminKey }) => {
+      cloudGetAdminKey().then((cloudKey) => {
+        if (cloudKey) {
+          localStorage.setItem('finora_admin_secret', String(cloudKey).trim());
+        }
+      });
+    }).catch(() => {});
+  }
+
   const keys = [
     { num: '1', sub: '' },
     { num: '2', sub: 'A B C' },
@@ -394,19 +405,22 @@
           </button>
         {/each}
 
-        <!-- Bottom Row -->
-        <!-- Reset / Ganti PIN -->
-        <button
-          type="button"
-          class="keypad-button utility-btn"
-          on:click={isSettingNewPin ? cancelSetup : startSetupPin}
-          title={isSettingNewPin ? 'Batal Atur' : 'Atur / Ganti PIN'}
-        >
-          <div class="utility-icon-box">
-            <i class={isSettingNewPin ? 'fa-solid fa-arrow-rotate-left' : 'fa-solid fa-key'}></i>
-          </div>
-          <span class="utility-label">{isSettingNewPin ? 'Batal' : 'Ganti PIN'}</span>
-        </button>
+        <!-- Bottom Row Left Slot: Only show 'Batal' if in new PIN setup, otherwise empty spacer to remove 'Ganti PIN' -->
+        {#if isSettingNewPin}
+          <button
+            type="button"
+            class="keypad-button utility-btn"
+            on:click={cancelSetup}
+            title="Batal Atur PIN"
+          >
+            <div class="utility-icon-box">
+              <i class="fa-solid fa-arrow-rotate-left"></i>
+            </div>
+            <span class="utility-label">Batal</span>
+          </button>
+        {:else}
+          <div class="keypad-spacer" aria-hidden="true"></div>
+        {/if}
 
         <!-- Zero Digit -->
         <button
@@ -926,6 +940,14 @@
   }
 
   /* Utility Buttons (Bottom Row) */
+  .keypad-spacer {
+    width: 76px;
+    height: 76px;
+    margin: 0 auto;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   .utility-btn {
     background: transparent;
     border-color: transparent;
